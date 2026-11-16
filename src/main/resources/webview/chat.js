@@ -44,7 +44,14 @@
     usageAt: 0,
     modelOpen: {},
     rules: null,
+    backend: "gapgpt", // "gapgpt" = GapGPT API directly · "claude" = local Claude Code CLI
+    gapModels: null, // [{id, owner}] from GET /v1/models
+    gapModelsError: "",
+    modelFilter: "",
+    lang: "en", // interface language: "en" | "fa"
+    gap: null, // GapGPT status: selected model's price / limits, account credit, per-model usage
   };
+  const isGap = () => G.backend === "gapgpt";
 
   function toIde(obj) {
     if (window.__toIde) window.__toIde(JSON.stringify(obj));
@@ -88,6 +95,22 @@
     );
   }
 
+  // ==================================================================== bidi
+  const RTL_CHARS = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/g;
+  const LTR_CHARS = /[A-Za-z\u00C0-\u024F\u0370-\u03FF\u0400-\u04FF]/g;
+  /**
+   * Direction of a piece of text by the majority of its letters (not the first strong character), so
+   * "React یک کتابخانه است" stays RTL and "Use the فایل button" stays LTR. Code spans and URLs are ignored.
+   */
+  function textDir(text) {
+    const t = String(text || "").replace(/`[^`\n]*`/g, " ").replace(/https?:\/\/\S+/g, " ");
+    const r = (t.match(RTL_CHARS) || []).length;
+    const l = (t.match(LTR_CHARS) || []).length;
+    if (!r && !l) return "auto";
+    return r >= l ? "rtl" : "ltr";
+  }
+  const dirAttr = (text) => ' dir="' + textDir(text) + '"';
+
   function markdown(src) {
     const lines = src.replace(/\r\n/g, "\n").split("\n");
     let out = "";
@@ -95,7 +118,8 @@
     let para = [];
     const flush = () => {
       if (para.length) {
-        out += "<p>" + para.map(inline).join("<br>") + "</p>";
+        // One block per line: each line of a mixed Persian/English paragraph gets its own direction.
+        out += para.map((l, k) => "<p" + (k ? ' class="cont"' : "") + dirAttr(l) + ">" + inline(l) + "</p>").join("");
         para = [];
       }
     };
@@ -115,7 +139,7 @@
       const h = line.match(/^(#{1,4})\s+(.*)$/);
       if (h) {
         flush();
-        out += "<h" + h[1].length + ">" + inline(h[2]) + "</h" + h[1].length + ">";
+        out += "<h" + h[1].length + dirAttr(h[2]) + ">" + inline(h[2]) + "</h" + h[1].length + ">";
         i++;
         continue;
       }
@@ -128,10 +152,13 @@
       if (/^\s*\|.*\|\s*$/.test(line) && i + 1 < lines.length && /^\s*\|[\s:\-|]+\|\s*$/.test(lines[i + 1])) {
         flush();
         const row = (l) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
-        out += "<table><tr>" + row(line).map((c) => "<th>" + inline(c) + "</th>").join("") + "</tr>";
+        let j = i + 2;
+        while (j < lines.length && /^\s*\|.*\|\s*$/.test(lines[j])) j++;
+        const tableDir = textDir([line].concat(lines.slice(i + 2, j)).join(" "));
+        out += '<table dir="' + tableDir + '"><tr>' + row(line).map((c) => "<th" + dirAttr(c) + ">" + inline(c) + "</th>").join("") + "</tr>";
         i += 2;
         while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) {
-          out += "<tr>" + row(lines[i]).map((c) => "<td>" + inline(c) + "</td>").join("") + "</tr>";
+          out += "<tr>" + row(lines[i]).map((c) => "<td" + dirAttr(c) + ">" + inline(c) + "</td>").join("") + "</tr>";
           i++;
         }
         out += "</table>";
@@ -141,21 +168,22 @@
       if (li) {
         flush();
         const tag = /\d/.test(li[1]) ? "ol" : "ul";
-        out += "<" + tag + ">";
+        const items = [];
         while (i < lines.length) {
           const m = lines[i].match(/^\s*([-*+]|\d+[.)])\s+(.*)$/);
           if (!m) break;
-          out += "<li>" + inline(m[2]) + "</li>";
+          items.push(m[2]);
           i++;
         }
-        out += "</" + tag + ">";
+        // The list's direction (bullet side) follows the majority; each item keeps its own direction.
+        out += "<" + tag + dirAttr(items.join(" ")) + ">" + items.map((t) => "<li" + dirAttr(t) + ">" + inline(t) + "</li>").join("") + "</" + tag + ">";
         continue;
       }
       if (/^\s*>/.test(line)) {
         flush();
         const buf = [];
         while (i < lines.length && /^\s*>/.test(lines[i])) buf.push(lines[i++].replace(/^\s*>\s?/, ""));
-        out += "<blockquote>" + buf.map(inline).join("<br>") + "</blockquote>";
+        out += "<blockquote" + dirAttr(buf.join(" ")) + ">" + buf.map((l) => "<div" + dirAttr(l) + ">" + inline(l) + "</div>").join("") + "</blockquote>";
         continue;
       }
       if (line.trim() === "") flush();
@@ -353,8 +381,8 @@
     hideWelcome(T);
     const d = document.createElement("div");
     d.className = "msg user";
-    d.innerHTML = '<span class="prompt">&gt;</span><span class="text" dir="auto"></span>';
-    d.querySelector(".text").textContent = text;
+    d.innerHTML = '<span class="prompt">&gt;</span><span class="text"></span>';
+    setDirLines(d.querySelector(".text"), text);
     T.el.appendChild(d);
     T.turn = null;
     scrollDown(T, true);
@@ -763,12 +791,115 @@
     $("infoAccount").textContent = a && a.email ? a.email : a && a.loggedIn === false ? "وارد نشده" : "—";
     $("infoPlan").textContent = a && (a.planTier || a.subscriptionType) ? "Claude " + cap(a.planTier || a.subscriptionType) : "—";
     $("infoProvider").textContent = (a && a.apiProvider) || "—";
+    if (isGap()) return renderGapInfo(c);
     $("infoLimits").innerHTML = Object.keys(G.limits).map((k) => {
       const l = G.limits[k];
       const p = Math.round(l.pct || 0);
       return '<span class="lim"><span class="k">' + esc(limitLabel(k)) + '</span><span class="bar"><span style="width:' + p + '%"' +
         (p >= 80 ? ' class="high"' : "") + '></span></span><span class="v">' + p + "%</span><span>" + esc(fmtReset(l.resetsAt)) + "</span></span>";
     }).join("");
+  }
+
+  // ==================================================================== GapGPT usage & limits
+  const usd = (n) => "$" + (n || 0).toFixed(n && n < 1 ? 4 : 2);
+  const per1M = (n) => (n === undefined || n === null ? "—" : "$" + (+n).toFixed(n < 0.1 ? 3 : 2));
+  function gapWindow() {
+    return (G.gap && G.gap.limits && G.gap.limits.contextWindow) || 0;
+  }
+  function renderGapInfo(c) {
+    const g = G.gap || {};
+    const b = g.balance;
+    $("infoPlan").textContent = !b ? "—" : b.remaining !== undefined ? "اعتبار: " + usd(b.remaining) + " از " + usd(b.limit)
+      : b.used !== undefined ? "مصرف: " + usd(b.used) : "—";
+    $("infoPlan").dir = "auto";
+    const parts = [];
+    const lim = g.limits || {};
+    if (lim.contextWindow) parts.push(["Context", (lim.estimated ? "≈" : "") + fmtNum(lim.contextWindow)]);
+    if (lim.maxOutput) parts.push(["Max out", fmtNum(lim.maxOutput)]);
+    if (g.price) parts.push(["Price /1M", "in " + per1M(g.price.input) + (g.price.cached !== undefined ? " · cache " + per1M(g.price.cached) : "") + " · out " + per1M(g.price.output)]);
+    const t = (g.usage || []).find((x) => x.model === g.model);
+    if (t) parts.push(["این مدل", fmtNum(t.input + t.output) + " توکن · " + usd(t.cost)]);
+    const rl = g.rateLimit || {};
+    if (rl["remaining-requests"]) parts.push(["Req left", rl["remaining-requests"] + (rl["limit-requests"] ? "/" + rl["limit-requests"] : "")]);
+    if (rl["remaining-tokens"]) parts.push(["Tok left", fmtNum(+rl["remaining-tokens"]) + (rl["limit-tokens"] ? "/" + fmtNum(+rl["limit-tokens"]) : "")]);
+    // Each label / value is isolated with its own direction so mixed Persian/English never reorders.
+    let html = parts.map((p) => '<span class="lim"><span class="k" dir="auto">' + esc(p[0]) + '</span><span class="v" dir="auto">' + esc(p[1]) + "</span></span>").join("");
+    if (b && b.limit && b.used !== undefined) {
+      const p = Math.min(100, Math.round((b.used / b.limit) * 100));
+      html = '<span class="lim"><span class="k">Credit</span><span class="bar"><span style="width:' + p + '%"' + (p >= 80 ? ' class="high"' : "") +
+        '></span></span><span class="v">' + p + "%</span></span>" + html;
+    }
+    $("infoLimits").innerHTML = html;
+  }
+  function onGapStatus(p) {
+    G.gap = p;
+    const w = gapWindow();
+    Object.values(G.chats).forEach((c) => {
+      if (w && (!c.model || c.model === p.model)) c.usage.window = w;
+    });
+    renderInfo();
+    if (G.view === "session") renderSession();
+  }
+  function renderGapSession(c) {
+    const g = G.gap || {};
+    const lim = g.limits || {};
+    const pr = g.price;
+    const kv = (k, val) => '<span class="k">' + k + '</span><span class="v" title="' + esc(val) + '">' + esc(val || "—") + "</span>";
+    const meter = (label, used, total, note) => {
+      const p = total ? Math.min(100, (used / total) * 100) : 0;
+      return '<div class="meter"><div class="row1"><span>' + esc(label) + '</span><span class="pct">' + esc(note || p.toFixed(1) + "%") + "</span></div>" +
+        '<div class="track"><div class="fill' + (p >= 95 ? " full" : p >= 75 ? " warn" : "") + '" style="width:' + p + '%"></div></div></div>';
+    };
+    let html = '<div class="cardbox"><h4>مدل انتخابی · <span class="mono" dir="ltr">' + esc(g.model || G.model || "—") + "</span></h4>";
+    const u = c.usage;
+    if (lim.contextWindow) html += meter("Context این گفتگو", u.ctx || 0, lim.contextWindow, fmtInt(u.ctx || 0) + " / " + fmtInt(lim.contextWindow) +
+      (lim.estimated ? " (تخمینی)" : ""));
+    html += '<div class="kv">' +
+      kv("ارائه‌دهنده", pr ? pr.provider : "") +
+      kv("پنجرهٔ Context", lim.contextWindow ? (lim.estimated ? "≈ " : "") + fmtInt(lim.contextWindow) + " توکن" : "") +
+      kv("حداکثر خروجی", lim.maxOutput ? fmtInt(lim.maxOutput) + " توکن" : "اعلام نشده") +
+      kv("قیمت ورودی", pr ? per1M(pr.input) + " / 1M" : "نامشخص") +
+      kv("قیمت ورودی کش‌شده", pr && pr.cached !== undefined ? per1M(pr.cached) + " / 1M" : "—") +
+      kv("قیمت خروجی", pr ? per1M(pr.output) + " / 1M" : "نامشخص") +
+      "</div>" +
+      '<div class="reset" style="margin-top:6px;color:var(--muted);font-size:0.82em">قیمت‌ها از صفحهٔ قیمت‌گذاری GapGPT (' + esc(g.priceAsOf || "") + ")" +
+      (lim.estimated ? " · اندازهٔ context را API اعلام نکرده و تخمینی است" : "") + "</div></div>";
+
+    const b = g.balance;
+    const rl = g.rateLimit || {};
+    html += '<div class="cardbox"><h4>اعتبار و محدودیت‌های حساب</h4>';
+    if (b && b.limit && b.used !== undefined) html += meter("اعتبار مصرف‌شده", b.used, b.limit, usd(b.used) + " از " + usd(b.limit) + " · باقی‌مانده " + usd(b.remaining));
+    else if (b && b.used !== undefined) html += '<div class="kv">' + kv("مصرف (۱۰۰ روز اخیر)", usd(b.used)) + kv("سقف اعتبار", "بدون سقف") + "</div>";
+    else html += '<div class="empty-note">اطلاعات اعتبار از API دریافت نشد.</div>';
+    const rlKeys = Object.keys(rl);
+    if (rlKeys.length) html += '<h5>محدودیت نرخ (آخرین درخواست)</h5><div class="kv">' + rlKeys.map((k) => kv(k, rl[k])).join("") + "</div>";
+    html += '<div class="btnrow" style="margin-top:6px"><button class="pillbtn" id="gapRefresh">↻ به‌روزرسانی</button></div></div>';
+
+    const rows = g.usage || [];
+    const tot = rows.reduce((a, r) => ({ req: a.req + r.requests, inp: a.inp + r.input, cached: a.cached + r.cached, out: a.out + r.output, cost: a.cost + r.cost }),
+      { req: 0, inp: 0, cached: 0, out: 0, cost: 0 });
+    html += '<div class="cardbox"><h4>مصرف توکن به تفکیک مدل <span class="muted" style="font-weight:normal">از ' + esc(g.since || "") + "</span></h4>";
+    if (!rows.length) html += '<div class="empty-note">هنوز با موتور GapGPT پیامی فرستاده نشده است.</div>';
+    else {
+      const max = Math.max(...rows.map((r) => r.input + r.output), 1);
+      html += '<div class="md" dir="ltr"><table class="usage-table"><thead><tr><th>Model</th><th>Req</th><th>Input</th><th>Cached</th><th>Output</th><th>Cost</th><th></th></tr></thead><tbody>' +
+        rows.map((r) => "<tr" + (r.model === g.model ? ' class="cur"' : "") + "><td class=\"mono\">" + esc(r.model) + "</td><td>" + fmtInt(r.requests) + "</td><td>" + fmtNum(r.input) +
+          "</td><td>" + fmtNum(r.cached) + "</td><td>" + fmtNum(r.output) + "</td><td>" + (r.priced ? usd(r.cost) : "?") +
+          '</td><td><span class="ubar"><span style="width:' + ((r.input + r.output) / max) * 100 + '%"></span></span></td></tr>').join("") +
+        "<tr class=\"tot\"><td>Total</td><td>" + fmtInt(tot.req) + "</td><td>" + fmtNum(tot.inp) + "</td><td>" + fmtNum(tot.cached) + "</td><td>" + fmtNum(tot.out) +
+        "</td><td>" + usd(tot.cost) + "</td><td></td></tr></tbody></table></div>" +
+        '<div class="reset" style="color:var(--muted);font-size:0.82em">هزینه‌ها تخمین محلی بر اساس جدول قیمت‌اند؛ مبلغ قطعی را پنل GapGPT نشان می‌دهد.</div>';
+    }
+    html += '<div class="btnrow" style="margin-top:6px"><button class="pillbtn" id="gapReset">پاک کردن آمار</button></div></div>';
+
+    html += '<div class="cardbox"><h4>نشست</h4><div class="kv">' + kv("موتور", "GapGPT API") + kv("آدرس", (G.account || {}).apiProvider) +
+      kv("پوشهٔ کاری", c.cwd || G.projectPath) + kv("شناسهٔ نشست", c.sessionId) +
+      kv("حالت دسترسی", (MODES.find((m) => m[0] === G.permissionMode) || MODES[0])[1]) +
+      kv("توکن‌های این گفتگو", fmtInt(Math.round(liveOut(u))) + " خروجی") + kv("هزینهٔ این گفتگو", usd(u.cost)) + "</div></div>";
+    const v = $("view-session");
+    v.innerHTML = html;
+    $("gapRefresh").addEventListener("click", () => toIde({ type: "gapgptStatus", chat: c.id, refresh: true }));
+    $("gapReset").addEventListener("click", () => toIde({ type: "gapgptUsageReset", chat: c.id }));
   }
 
   function trackUsage(c, msg) {
@@ -921,6 +1052,10 @@
           if (Array.isArray(ev.plugins)) c.pluginPaths = ev.plugins.map((p) => p.path).filter(Boolean);
           if (G.view === "skills" && c === chat()) renderSkills();
           if (ev.session_id) c.sessionId = ev.session_id;
+          if (!c.connected && ev.backend === "gapgpt") {
+            c.connected = true;
+            notice(c, c.main, "✓ آماده — GapGPT API · " + (ev.model || ""), "");
+          }
           if (!c.connected) {
             c.connected = true;
             const mcp = (ev.mcp_servers || []).find((m) => m.name === "gapgpt");
@@ -968,12 +1103,12 @@
     ["sonnet[1m]", "Sonnet · 1M context", "context یک میلیون توکنی"],
     ["fable[1m]", "Fable · 1M context", "context یک میلیون توکنی"],
   ];
-  // Specific versions (model IDs known to Claude Code 2.1.x). Your plan may not include all of them.
+  // Specific versions — the Claude model IDs served by GapGPT (gapgpt.app/platform-v2/pricing).
   const MODEL_FAMILIES = [
     ["Opus", [["claude-opus-5-5", "Opus 5.5"], ["claude-opus-5", "Opus 5"], ["claude-opus-4-8", "Opus 4.8"], ["claude-opus-4-7", "Opus 4.7"],
-      ["claude-opus-4-6", "Opus 4.6"], ["claude-opus-4-5", "Opus 4.5"], ["claude-opus-4-1", "Opus 4.1"], ["claude-opus-4-0", "Opus 4"]]],
+      ["claude-opus-4-6", "Opus 4.6"], ["claude-opus-4-5", "Opus 4.5"]]],
     ["Sonnet", [["claude-sonnet-5-5", "Sonnet 5.5"], ["claude-sonnet-5", "Sonnet 5"], ["claude-sonnet-4-6", "Sonnet 4.6"],
-      ["claude-sonnet-4-5", "Sonnet 4.5"], ["claude-sonnet-4-0", "Sonnet 4"]]],
+      ["claude-sonnet-4-5", "Sonnet 4.5"]]],
     ["Haiku", [["claude-haiku-5-5", "Haiku 5.5"], ["claude-haiku-4-5", "Haiku 4.5"]]],
     ["Fable", [["claude-fable-5-2", "Fable 5.2"], ["claude-fable-5-1", "Fable 5.1"], ["claude-fable-5", "Fable 5"]]],
   ];
@@ -990,8 +1125,8 @@
   }
   function setModel(m, notify) {
     G.model = m || "";
-    const e = MODELS.find((x) => x[0] === G.model);
-    $("ddModel").querySelector(".lbl").textContent = e ? e[1].replace(" (آخرین نسخه)", "") : modelLabel(G.model);
+    const e = !isGap() && MODELS.find((x) => x[0] === G.model);
+    $("ddModel").querySelector(".lbl").textContent = isGap() ? G.model || "—" : e ? e[1].replace(" (آخرین نسخه)", "") : modelLabel(G.model);
     if (notify) toIde({ type: "setModel", value: G.model });
     renderInfo();
   }
@@ -1072,6 +1207,8 @@
     b.querySelector(".lt").textContent = it.label;
     if (it.desc) b.querySelector(".md2").textContent = it.desc;
     if (it.family) b.dataset.modelFamily = it.family;
+    if (it.mid) b.dataset.mid = it.mid;
+    if (it.famOf) b.dataset.famOf = it.famOf;
     b.addEventListener("click", (e) => {
       if (it.keepOpen) return; // handled by the document click listener (re-renders the menu)
       e.stopPropagation();
@@ -1089,8 +1226,79 @@
   function menuAnchorFor(id) {
     return $(id);
   }
+  const BACKENDS = [
+    ["gapgpt", "GapGPT API", "همهٔ مدل‌های گپ‌جی‌پی‌تی (GPT، Claude، Gemini، DeepSeek و …) — مستقل از Claude Code"],
+    ["claude", "Claude Code CLI", "اجرای Claude Code نصب‌شده با حساب و تنظیمات خودش"],
+  ];
+  function setBackend(b) {
+    if (b === G.backend) return;
+    G.backend = b;
+    toIde({ type: "setBackend", value: b }); // the IDE answers with a fresh "init"
+  }
+  function backendItems() {
+    return [{ header: "موتور پاسخ‌گویی" }].concat(BACKENDS.map((b) => ({
+      label: b[1], desc: b[2], checked: G.backend === b[0], onClick: () => setBackend(b[0]),
+    })), [{ sep: true }]);
+  }
+  /** Groups GapGPT model IDs by vendor (owned_by is not reliable across proxied providers). */
+  function gapFamily(m) {
+    const id = m.id.toLowerCase();
+    const rules = [
+      [/^claude/, "Anthropic · Claude"], [/^(gpt|o\d|chatgpt|codex|davinci|babbage|text-|tts|whisper|dall-e)/, "OpenAI"],
+      [/^(gemini|gemma|imagen|veo)/, "Google"], [/^deepseek/, "DeepSeek"], [/^grok/, "xAI · Grok"], [/^(qwen|qwq)/, "Qwen"],
+      [/llama/, "Meta · Llama"], [/^(mistral|mixtral|codestral|magistral|devstral)/, "Mistral"], [/^(kimi|moonshot)/, "Moonshot · Kimi"],
+      [/^(glm|zhipu)/, "Zhipu · GLM"], [/^(minimax|abab)/, "MiniMax"],
+    ];
+    const r = rules.find((x) => x[0].test(id));
+    return r ? r[1] : m.owner ? cap(m.owner) : "سایر";
+  }
+  /** Filters the open model menu in place (re-rendering would steal focus from the search box). */
+  function filterModelMenu(q) {
+    G.modelFilter = q;
+    q = q.trim().toLowerCase();
+    const visible = {};
+    document.querySelectorAll("#menu [data-mid]").forEach((el) => {
+      const hit = q ? el.dataset.mid.toLowerCase().includes(q) : G.modelOpen[el.dataset.famOf];
+      el.style.display = hit ? "" : "none";
+      if (hit || !q) visible[el.dataset.famOf] = true;
+    });
+    document.querySelectorAll("#menu [data-model-family]").forEach((el) => {
+      el.style.display = visible[el.dataset.modelFamily] ? "" : "none";
+    });
+  }
+  function gapModelMenu(anchor) {
+    const items = backendItems();
+    if (!G.gapModels) {
+      items.push({ label: G.gapModelsError ? "✗ " + G.gapModelsError : "در حال دریافت فهرست مدل‌ها…", cls: "fam" });
+      if (G.gapModelsError) items.push({ label: "تلاش دوباره", onClick: () => { G.gapModelsError = ""; toIde({ type: "gapgptModels", refresh: true }); } });
+    } else {
+      items.push({ input: { placeholder: "جستجوی مدل (" + G.gapModels.length + " مدل)…", focus: true, onInput: filterModelMenu,
+        onEnter: (v) => {
+          v = v.trim();
+          if (!v) return;
+          const hit = G.gapModels.find((m) => m.id === v) || G.gapModels.find((m) => m.id.toLowerCase().includes(v.toLowerCase()));
+          setModel(hit ? hit.id : v, true);
+          closeMenu();
+        } } });
+      const fams = {};
+      G.gapModels.forEach((m) => (fams[gapFamily(m)] = fams[gapFamily(m)] || []).push(m));
+      Object.keys(fams).sort((a, b) => (a.startsWith("Anthropic") ? -1 : b.startsWith("Anthropic") ? 1 : a.localeCompare(b))).forEach((fam) => {
+        const list = fams[fam];
+        const open = G.modelOpen[fam] !== undefined ? G.modelOpen[fam] : list.some((m) => m.id === G.model);
+        G.modelOpen[fam] = open;
+        items.push({ label: (open ? "▾ " : "◂ ") + fam + "  (" + list.length + ")", cls: "fam", family: fam, keepOpen: true });
+        list.forEach((m) => items.push({ label: m.id, cls: "ver", mid: m.id, famOf: fam, checked: G.model === m.id, onClick: () => setModel(m.id, true) }));
+      });
+      items.push({ sep: true }, { label: "↻ به‌روزرسانی فهرست مدل‌ها", onClick: () => { G.gapModels = null; toIde({ type: "gapgptModels", refresh: true }); } });
+    }
+    showMenu(anchor, items);
+    const inp = $("menu").querySelector("input");
+    if (inp && G.modelFilter) inp.value = G.modelFilter;
+    filterModelMenu(G.modelFilter || "");
+  }
   function modelMenu(anchor) {
-    const items = MODELS.map((m) => ({ label: m[1], desc: m[2], checked: G.model === m[0], onClick: () => setModel(m[0], true) }));
+    if (isGap()) return gapModelMenu(anchor);
+    const items = backendItems().concat(MODELS.map((m) => ({ label: m[1], desc: m[2], checked: G.model === m[0], onClick: () => setModel(m[0], true) })));
     items.push({ sep: true }, { header: "انتخاب نسخهٔ مشخص" });
     MODEL_FAMILIES.forEach(([fam, versions]) => {
       const hasCurrent = versions.some((v) => v[0] === G.model);
@@ -1377,7 +1585,7 @@
   }
   function sendFromView(text) {
     switchView("chat");
-    send(text);
+    send(G.lang === "en" && window.I18N ? window.I18N.t(text) : text);
   }
 
   // ---------------------------------------------------------------- workloads
@@ -1592,11 +1800,12 @@
   }
 
   // ---------------------------------------------------------------- session
-  const CTX_COLORS = ["#04403e", "#0b6b67", "#13908a", "#2fb3ab", "#66cdc6", "#a3e3dd", "#08504d", "#1c7d78", "#6cb6ff", "#7b7e84"];
+  const CTX_COLORS = ["#002748", "#0b3f70", "#1a5996", "#2f74b8", "#5b9fe0", "#9cc5ee", "#06345e", "#24669f", "#6cb6ff", "#7b7e84"];
   function renderSession() {
     const v = $("view-session");
     const c = chat();
     if (!c) return;
+    if (isGap()) return renderGapSession(c);
     const si = c.sessionInfo || {};
     const a = G.account || {};
     const plan = a.planTier || a.subscriptionType || "";
@@ -1686,6 +1895,10 @@
           G.sendOnEnter = p.sendOnEnter !== false;
           G.projectPath = p.projectPath || "";
           document.querySelectorAll(".welcome .cwd").forEach((e) => (e.textContent = "cwd: " + G.projectPath));
+          if (p.backend) G.backend = p.backend;
+          setLang(p.lang || "en", false);
+          document.body.classList.toggle("gapgpt", isGap());
+          if (isGap() && !G.gapModels) toIde({ type: "gapgptModels" });
           setMode(p.permissionMode, false);
           setModel(p.model, false);
           setEffort(p.effort, false);
@@ -1701,6 +1914,14 @@
         case "context":
           G.ctx = p && p.file ? p : null;
           renderCtx();
+          break;
+        case "gapgptStatus":
+          onGapStatus(p);
+          break;
+        case "gapgptModels":
+          G.gapModels = p.items || null;
+          G.gapModelsError = p.error || "";
+          if (menuAnchor && menuAnchor.id === "ddModel") gapModelMenu(menuAnchor);
           break;
         case "account":
           G.account = p;
@@ -1861,7 +2082,36 @@
     toIde({ type: "send", chat: c.id, text, shareContext: c.shareCtx });
   }
 
+  /** Interface language (UI chrome only; messages can be written and answered in either language). */
+  function setLang(l, notify) {
+    G.lang = l === "fa" ? "fa" : "en";
+    if (window.I18N) window.I18N.setLang(G.lang);
+    const b = $("btnLang");
+    b.querySelector(".lbl").textContent = G.lang === "fa" ? "FA" : "EN";
+    updateInputDir();
+    if (notify) toIde({ type: "setLanguage", value: G.lang });
+    renderInfo();
+  }
+
+  /** Fills [el] with one block per line, each with its own text direction. */
+  function setDirLines(el, text) {
+    el.textContent = "";
+    String(text || "").split("\n").forEach((line) => {
+      const div = document.createElement("div");
+      div.dir = textDir(line);
+      div.textContent = line || "\u200b";
+      el.appendChild(div);
+    });
+  }
+
+  /** The composer follows what is being typed (majority of letters), so the caret never jumps mid-word. */
+  function updateInputDir() {
+    const d = textDir(inputEl.value);
+    inputEl.dir = d === "auto" ? (G.lang === "fa" ? "rtl" : "ltr") : d;
+  }
+
   function autoGrow() {
+    updateInputDir();
     inputEl.style.height = "auto";
     inputEl.style.height = Math.min(inputEl.scrollHeight + 2, window.innerHeight * 0.4) + "px";
   }
@@ -1981,6 +2231,7 @@
   menuBtn("btnMore", moreMenu);
   menuBtn("btnMore2", moreMenu);
   menuBtn("btnAttach", attachMenu);
+  $("btnLang").addEventListener("click", () => setLang(G.lang === "fa" ? "en" : "fa", true));
   menuBtn("ddModel", modelMenu);
   menuBtn("ddMode", modeMenu);
   menuBtn("ddEffort", effortMenu);

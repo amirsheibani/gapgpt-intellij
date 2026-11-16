@@ -29,7 +29,7 @@
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow id="GapGpt"
                     anchor="right"
-                    icon="/icons/claude.svg"
+                    icon="/icons/gapgpt.svg"
                     factoryClass="ir.gapgpt.ui.ChatToolWindowFactory"/>
 
         <applicationService serviceImplementation="ir.gapgpt.settings.GapGptSettings"/>
@@ -43,28 +43,28 @@
     </extensions>
 
     <actions>
-        <group id="GapGpt.EditorGroup" text="GapGPT" popup="true" icon="/icons/claude.svg">
+        <group id="GapGpt.EditorGroup" text="GapGPT" popup="true" icon="/icons/gapgpt.svg">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
             <action id="GapGpt.SendSelection"
                     class="ir.gapgpt.actions.SendSelectionAction"
-                    text="درج ارجاع فایل در گفتگو (@File#L1-99)"
-                    description="Insert a reference to the current file / selected lines into the Claude chat input">
+                    text="Insert File Reference into Chat (@File#L1-99)"
+                    description="Insert a reference to the current file / selected lines into the GapGPT chat input">
                 <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
                 <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift K"/>
             </action>
             <action id="GapGpt.Explain"
                     class="ir.gapgpt.actions.ExplainSelectionAction"
-                    text="توضیح این کد"
-                    description="Ask Claude to explain the selected code in Persian"/>
+                    text="Explain This Code"
+                    description="Ask the model to explain the selected code"/>
             <action id="GapGpt.Review"
                     class="ir.gapgpt.actions.ReviewSelectionAction"
-                    text="بررسی و پیشنهاد بهبود"
-                    description="Ask Claude to review the selected code"/>
+                    text="Review and Suggest Improvements"
+                    description="Ask the model to review the selected code"/>
         </group>
         <action id="GapGpt.Open"
                 class="ir.gapgpt.actions.OpenChatAction"
-                text="GapGPT: باز کردن گفتگو"
-                icon="/icons/claude.svg"
+                text="GapGPT: Open Chat"
+                icon="/icons/gapgpt.svg"
                 description="Open the GapGPT chat">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
             <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift L"/>

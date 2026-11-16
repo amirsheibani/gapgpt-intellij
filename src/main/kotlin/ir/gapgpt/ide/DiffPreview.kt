@@ -21,6 +21,7 @@ import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.VirtualFile
+import ir.gapgpt.settings.I18n
 import java.io.File
 
 /**
@@ -69,20 +70,20 @@ class DiffPreview private constructor(
         val doc = document ?: EditorFactory.getInstance().createDocument(proposedDisplay).also { document = it }
         val right = factory.create(project, doc, fileType)
         val request = SimpleDiffRequest(
-            "Claude ✎ $fileName",
+            "GapGPT ✎ $fileName",
             left,
             right,
-            if (isNewFile) "(فایل جدید)" else "نسخهٔ فعلی",
-            "پیشنهاد Claude (قابل ویرایش)",
+            if (isNewFile) I18n.t("(new file)", "(فایل جدید)") else I18n.t("Current version", "نسخهٔ فعلی"),
+            I18n.t("Proposed change (editable)", "پیشنهاد (قابل ویرایش)"),
         )
         request.putUserData(
             DiffUserDataKeys.CONTEXT_ACTIONS,
             listOf<AnAction>(
-                action("پذیرش تغییرات", "Accept Claude's change (including your edits on the right side)", AllIcons.Actions.Checked, onAccept),
-                action("رد تغییرات", "Reject Claude's change", AllIcons.Actions.Cancel, onReject),
+                action(I18n.t("Accept Changes", "پذیرش تغییرات"), "Accept Claude's change (including your edits on the right side)", AllIcons.Actions.Checked, onAccept),
+                action(I18n.t("Reject Changes", "رد تغییرات"), "Reject Claude's change", AllIcons.Actions.Cancel, onReject),
             ),
         )
-        val vf = ChainDiffVirtualFile(SimpleDiffRequestChain(request), "Claude ✎ $fileName")
+        val vf = ChainDiffVirtualFile(SimpleDiffRequestChain(request), "GapGPT ✎ $fileName")
         diffFile = vf
         DiffEditorTabFilesManager.getInstance(project).showDiffFile(vf, true)
     }

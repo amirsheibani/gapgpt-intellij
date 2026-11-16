@@ -34,6 +34,10 @@ import com.intellij.ui.jcef.JBCefBrowserBase
 import com.intellij.ui.jcef.JBCefJSQuery
 import com.intellij.util.ui.UIUtil
 import ir.gapgpt.PluginLog
+import ir.gapgpt.api.ChatBackend
+import ir.gapgpt.api.GapGptChatRunner
+import ir.gapgpt.api.GapGptPricing
+import ir.gapgpt.api.GapGptUsage
 import ir.gapgpt.cli.ClaudeCliRunner
 import ir.gapgpt.cli.CliInfo
 import ir.gapgpt.cli.ClaudeConfig
@@ -44,6 +48,7 @@ import ir.gapgpt.ide.IdeMcpServer
 import ir.gapgpt.ide.PermissionBroker
 import ir.gapgpt.ide.ProjectFileSearch
 import ir.gapgpt.ide.SelectionTracker
+import ir.gapgpt.settings.GapGptApi
 import ir.gapgpt.settings.GapGptSettings
 import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
@@ -71,7 +76,7 @@ class ChatPanel(private val project: Project) : Disposable, PermissionBroker.Ui 
     private val pending = ConcurrentLinkedQueue<String>()
     private val lock = Any()
 
-    private val runners = ConcurrentHashMap<String, ClaudeCliRunner>()
+    private val runners = ConcurrentHashMap<String, ChatBackend>()
     private val broker = PermissionBroker.getInstance(project)
     private val tracker = SelectionTracker.getInstance(project)
     private val logListener: (PluginLog.Line) -> Unit = { post("logLine", lineJson(it)) }
@@ -111,7 +116,10 @@ class ChatPanel(private val project: Project) : Disposable, PermissionBroker.Ui 
                 }
                 sendInit()
                 pooled { sendAccount() }
-                pooled { CliInfo.usage(project.basePath)?.let { post("usage", it) } }
+                // /usage reports claude.ai subscription limits; only meaningful for the Claude Code engine.
+                pooled { if (!isGapGpt()) CliInfo.usage(project.basePath)?.let { post("usage", it) } }
+                pooled { sendGapGptModels(false) }
+                pooled { sendGapGptStatus(null, false) }
             }
         }, browser.cefBrowser)
 
@@ -125,8 +133,21 @@ class ChatPanel(private val project: Project) : Disposable, PermissionBroker.Ui 
         browser.loadHTML(buildHtml())
     }
 
-    private fun runner(chat: String): ClaudeCliRunner = runners.getOrPut(chat) {
-        ClaudeCliRunner(project.basePath, object : ClaudeCliRunner.Listener {
+    private fun isGapGpt() = GapGptSettings.get().backend == GapGptSettings.BACKEND_GAPGPT
+
+    /** The chat's engine; replaced (fresh conversation) when the user switched engines since. */
+    private fun runner(chat: String): ChatBackend {
+        val want = isGapGpt()
+        runners[chat]?.let { r ->
+            if ((r is GapGptChatRunner) == want || r.isRunning) return r
+            r.resetSession()
+            runners.remove(chat)
+        }
+        return runners.getOrPut(chat) { newRunner(chat, want) }
+    }
+
+    private fun newRunner(chat: String, gapgpt: Boolean): ChatBackend {
+        val listener = object : ClaudeCliRunner.Listener {
             override fun onEvent(event: JsonObject) = post("claude", JsonObject().apply {
                 addProperty("chat", chat)
                 add("event", event)
@@ -138,6 +159,7 @@ class ChatPanel(private val project: Project) : Disposable, PermissionBroker.Ui 
                 broker.cancelAll(chat)
                 // Claude may have changed files on disk: make the IDE pick them up.
                 VirtualFileManager.getInstance().asyncRefresh(null)
+                if (gapgpt) pooled { sendGapGptStatus(chat, true) }
                 post("exit", chatJson(chat).apply {
                     addProperty("code", exitCode)
                     addProperty("gotResult", gotResult)
@@ -145,7 +167,8 @@ class ChatPanel(private val project: Project) : Disposable, PermissionBroker.Ui 
             }
 
             override fun onStartFailed(message: String) = post("error", chatJson(chat).apply { addProperty("text", message) })
-        })
+        }
+        return if (gapgpt) GapGptChatRunner(project, chat, listener) else ClaudeCliRunner(project.basePath, listener)
     }
 
     private fun chatJson(chat: String) = JsonObject().apply { addProperty("chat", chat) }
@@ -214,7 +237,10 @@ class ChatPanel(private val project: Project) : Disposable, PermissionBroker.Ui 
                 }
                 sendInit()
                 val prompt = if (msg.get("shareContext")?.asBoolean != false && !text.startsWith("/")) withIdeContext(text) else text
-                pooled { r.send(prompt, IdeMcpServer.getInstance(project).ensureStarted(chat)) }
+                pooled {
+                    if (r is GapGptChatRunner) r.send(prompt, null)
+                    else r.send(prompt, IdeMcpServer.getInstance(project).ensureStarted(chat))
+                }
             }
             "stop" -> {
                 broker.cancelAll(chat)
@@ -243,8 +269,34 @@ class ChatPanel(private val project: Project) : Disposable, PermissionBroker.Ui 
             }
             "recentFiles" -> ApplicationManager.getApplication().invokeLater { sendRecentFiles() }
             "setMode" -> GapGptSettings.get().permissionMode = str("value")
-            "setModel" -> GapGptSettings.get().model = str("value")
+            "setModel" -> GapGptSettings.get().let {
+                if (isGapGpt()) {
+                    it.gapgptModel = str("value")
+                    pooled { sendGapGptStatus(chat, false) }
+                } else it.model = str("value")
+            }
+            "gapgptStatus" -> pooled { sendGapGptStatus(chat, msg.get("refresh")?.asBoolean == true) }
+            "gapgptUsageReset" -> {
+                GapGptUsage.get().reset()
+                pooled { sendGapGptStatus(chat, false) }
+            }
+            "setBackend" -> {
+                val b = if (str("value") == GapGptSettings.BACKEND_CLAUDE) GapGptSettings.BACKEND_CLAUDE else GapGptSettings.BACKEND_GAPGPT
+                GapGptSettings.get().backend = b
+                PluginLog.info("backend", "engine -> $b")
+                sendInit()
+                pooled { sendAccount() }
+                if (b == GapGptSettings.BACKEND_GAPGPT) pooled {
+                    sendGapGptModels(false)
+                    sendGapGptStatus(chat, false)
+                }
+            }
+            "gapgptModels" -> pooled { sendGapGptModels(msg.get("refresh")?.asBoolean == true) }
             "setEffort" -> GapGptSettings.get().effort = str("value")
+            "setLanguage" -> {
+                GapGptSettings.get().uiLanguage = if (str("value") == "fa") "fa" else "en"
+                PluginLog.info("ui", "interface language -> ${GapGptSettings.get().uiLanguage}")
+            }
             "setAutoFollow" -> GapGptSettings.get().autoFollow = msg.get("value")?.asBoolean ?: true
             "attach" -> attach(str("kind"))
             "listCommands" -> pooled {
@@ -262,6 +314,12 @@ class ChatPanel(private val project: Project) : Disposable, PermissionBroker.Ui 
             // ----- Session tab
             "session" -> {
                 val sid = runners[chat]?.sessionId
+                if (runners[chat] is GapGptChatRunner || (runners[chat] == null && isGapGpt())) {
+                    post("sessionInfo", chatJson(chat).apply { sid?.let { addProperty("sessionId", it) } })
+                    pooled { sendAccount() }
+                    pooled { sendGapGptStatus(chat, false) }
+                    return
+                }
                 pooled {
                     post("sessionInfo", chatJson(chat).apply {
                         CliInfo.context(project.basePath, sid)?.let { add("context", it) }
@@ -283,7 +341,7 @@ class ChatPanel(private val project: Project) : Disposable, PermissionBroker.Ui 
                 }
             }
 
-            "usage" -> pooled { CliInfo.usage(project.basePath)?.let { post("usage", it) } }
+            "usage" -> pooled { if (isGapGpt()) sendGapGptStatus(chat, true) else CliInfo.usage(project.basePath)?.let { post("usage", it) } }
 
             // ----- Skills / Rules tabs
             "skills" -> {
@@ -378,8 +436,93 @@ class ChatPanel(private val project: Project) : Disposable, PermissionBroker.Ui 
     }
 
     private fun sendAccount() {
+        if (isGapGpt()) {
+            val hasKey = GapGptApi.apiKey.isNotBlank()
+            post("account", JsonObject().apply {
+                addProperty("loggedIn", hasKey)
+                if (hasKey) addProperty("email", "GapGPT API")
+                addProperty("apiProvider", "GapGPT · " + GapGptApi.baseUrl())
+                addProperty("authMethod", "API key")
+            })
+            return
+        }
         val acc = CliInfo.account() ?: JsonObject().apply { addProperty("error", "claude پیدا نشد") }
         post("account", acc)
+    }
+
+    private fun sendGapGptModels(refresh: Boolean) {
+        if (!isGapGpt()) return
+        val res = JsonObject()
+        try {
+            res.add("items", JsonArray().apply {
+                GapGptApi.listModels(refresh).forEach { m ->
+                    add(JsonObject().apply {
+                        addProperty("id", m.id)
+                        addProperty("owner", m.ownedBy)
+                    })
+                }
+            })
+        } catch (e: Exception) {
+            PluginLog.warn("gapgpt", "model list failed: ${e.message}")
+            res.addProperty("error", e.message ?: e.javaClass.simpleName)
+        }
+        post("gapgptModels", res)
+    }
+
+    /**
+     * Prices, limits, account credit and per-model token usage of the GapGPT engine.
+     * [refresh] re-reads the credit from the API (otherwise a value up to a minute old is used).
+     */
+    private fun sendGapGptStatus(chat: String?, refresh: Boolean) {
+        if (!isGapGpt()) return
+        val model = GapGptSettings.get().gapgptModel.trim().ifBlank { GapGptApi.DEFAULT_MODEL }
+        if (refresh) GapGptApi.invalidateBalance()
+        val res = JsonObject()
+        res.addProperty("model", model)
+        GapGptPricing.price(model)?.let { p ->
+            res.add("price", JsonObject().apply {
+                addProperty("provider", p.provider)
+                addProperty("input", p.input)
+                p.cached?.let { addProperty("cached", it) }
+                addProperty("output", p.output)
+            })
+        }
+        res.addProperty("priceAsOf", GapGptPricing.asOf)
+        val apiModel = runCatching { GapGptApi.listModels() }.getOrNull()?.firstOrNull { it.id == model }
+        val lim = GapGptPricing.limits(model, apiModel)
+        res.add("limits", JsonObject().apply {
+            addProperty("contextWindow", lim.contextWindow)
+            lim.maxOutput?.let { addProperty("maxOutput", it) }
+            addProperty("estimated", lim.estimated)
+        })
+        runCatching { GapGptApi.balance() }.getOrNull()?.let { b ->
+            res.add("balance", JsonObject().apply {
+                b.limit?.let { addProperty("limit", it) }
+                b.used?.let { addProperty("used", it) }
+                b.remaining?.let { addProperty("remaining", it) }
+            })
+        }
+        (chat?.let { runners[it] } as? GapGptChatRunner)?.lastRateLimit?.takeIf { it.isNotEmpty() }?.let { rl ->
+            res.add("rateLimit", JsonObject().apply { rl.forEach { (k, v) -> addProperty(k.removePrefix("x-ratelimit-"), v) } })
+        }
+        val usage = GapGptUsage.get()
+        res.addProperty("since", usage.since)
+        res.add("usage", JsonArray().apply {
+            usage.all().entries.sortedByDescending { it.value.lastUsed }.forEach { (id, t) ->
+                add(JsonObject().apply {
+                    addProperty("model", id)
+                    addProperty("requests", t.requests)
+                    addProperty("input", t.input)
+                    addProperty("cached", t.cached)
+                    addProperty("output", t.output)
+                    addProperty("reasoning", t.reasoning)
+                    addProperty("cost", t.cost)
+                    addProperty("priced", GapGptPricing.price(id) != null)
+                    addProperty("lastUsed", t.lastUsed)
+                })
+            }
+        })
+        post("gapgptStatus", res)
     }
 
     private fun guardJson() = JsonObject().apply {
@@ -486,7 +629,9 @@ class ChatPanel(private val project: Project) : Disposable, PermissionBroker.Ui 
             addProperty("sendOnEnter", s.sendOnEnter)
             addProperty("projectPath", project.basePath ?: "")
             addProperty("permissionMode", s.permissionMode)
-            addProperty("model", s.model)
+            addProperty("backend", s.backend)
+            addProperty("lang", s.uiLanguage)
+            addProperty("model", if (s.backend == GapGptSettings.BACKEND_GAPGPT) s.gapgptModel else s.model)
             addProperty("effort", s.effort)
             addProperty("shareSelection", s.shareSelection)
             addProperty("guardEnabled", s.guardEnabled)
@@ -516,7 +661,7 @@ class ChatPanel(private val project: Project) : Disposable, PermissionBroker.Ui 
 
         val html = String(res("chat.html"), Charsets.UTF_8)
         val css = String(res("chat.css"), Charsets.UTF_8)
-        val js = String(res("chat.js"), Charsets.UTF_8)
+        val js = String(res("i18n.js"), Charsets.UTF_8) + "\n" + String(res("chat.js"), Charsets.UTF_8)
         val font = Base64.getEncoder().encodeToString(res("Vazirmatn.woff2"))
         return html
             .replace("/*__CSS__*/", css.replace("__FONT_BASE64__", font))

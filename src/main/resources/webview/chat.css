@@ -15,11 +15,11 @@
   --panel: rgba(127, 127, 127, 0.07);
   /* Brand color 0xFF04403E. On the dark theme it is used for fills; text and thin
      borders use a lighter tint of the same hue so they stay readable. */
-  --brand: #04403e;
+  --brand: #002748; /* GapGPT navy (0xFF002748) */
   --on-brand: #ffffff;
-  --accent: #3fb3ac;
-  --accent-bg: rgba(4, 64, 62, 0.55);
-  --accent-soft: rgba(63, 179, 172, 0.45);
+  --accent: #5b9fe0;
+  --accent-bg: rgba(0, 39, 72, 0.55);
+  --accent-soft: rgba(91, 159, 224, 0.45);
   --ok: #4eba65;
   --danger: #ff6b80;
   --warn: #e2b340;
@@ -31,12 +31,13 @@
   --rem-bg: rgba(255, 107, 128, 0.16);
   --font-size: 14px;
   --font: "Vazirmatn", "Vazir", "Tahoma", "Segoe UI", system-ui, sans-serif;
-  --mono: "JetBrains Mono", "Fira Code", Menlo, Consolas, monospace;
+  /* Vazirmatn before the generic fallback: Persian inside code/values stays properly joined. */
+  --mono: "JetBrains Mono", "Fira Code", Menlo, Consolas, "Vazirmatn", monospace;
 }
 body.light {
-  --accent: #04403e;
-  --accent-bg: rgba(4, 64, 62, 0.10);
-  --accent-soft: rgba(4, 64, 62, 0.45);
+  --accent: #002748;
+  --accent-bg: rgba(0, 39, 72, 0.10);
+  --accent-soft: rgba(0, 39, 72, 0.45);
   --muted: #6e7076;
   --dim: rgba(110, 112, 118, 0.8);
   --panel: rgba(0, 0, 0, 0.035);
@@ -116,8 +117,8 @@ kbd { font-family: var(--mono); font-size: 0.85em; border: 1px solid var(--borde
 
 /* cards used by the tool views */
 .cardbox { border: 1px solid var(--border); border-radius: 14px; background: var(--panel); padding: 10px 16px 12px; margin-bottom: 12px; }
-.cardbox h4 { margin: 0 0 6px; font-size: 0.78em; letter-spacing: 0.12em; color: var(--muted); font-weight: 600; text-transform: uppercase; }
-.cardbox h5 { margin: 10px 0 4px; font-size: 0.72em; letter-spacing: 0.1em; color: var(--muted); font-weight: 600; }
+.cardbox h4 { margin: 0 0 6px; font-size: 0.78em; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+.cardbox h5 { margin: 10px 0 4px; font-size: 0.72em; color: var(--muted); font-weight: 600; }
 .cardbox .muted { color: var(--muted); font-size: 0.88em; }
 .cards2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
 .cards2 .cardbox { margin-bottom: 0; }
@@ -208,17 +209,23 @@ kbd { font-family: var(--mono); font-size: 0.85em; border: 1px solid var(--borde
 .msg { margin: 0 0 10px; }
 .msg.user { display: flex; gap: 8px; background: var(--user-bg); border-radius: 8px; padding: 4px 12px; }
 .msg.user .prompt { color: var(--muted); font-family: var(--mono); flex: none; }
-.msg.user .text { white-space: pre-wrap; unicode-bidi: plaintext; text-align: start; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.msg.user .text { white-space: pre-wrap; text-align: start; flex: 1; min-width: 0; overflow-wrap: break-word; word-break: normal; }
+.msg.user .text > div { text-align: start; }
 .row { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0; }
 .row > .bullet { display: none; }
 .row > .content { flex: 1; min-width: 0; }
 
-.md p, .md li, .md h1, .md h2, .md h3, .md h4, .md blockquote, .md td, .md th { unicode-bidi: plaintext; text-align: start; }
+/* Direction is set per block by textDir() (majority of letters); words wrap only at spaces, never mid-word. */
+.md p, .md li, .md h1, .md h2, .md h3, .md h4, .md blockquote, .md blockquote > div, .md td, .md th {
+  text-align: start; overflow-wrap: break-word; word-break: normal;
+}
+.md p.cont { margin-top: -0.3em; }
 .md > :first-child { margin-top: 0; }
 .md p { margin: 0.3em 0; }
 .md h1, .md h2, .md h3, .md h4 { margin: 0.7em 0 0.3em; line-height: 1.5; }
 .md h1 { font-size: 1.25em; } .md h2 { font-size: 1.15em; } .md h3, .md h4 { font-size: 1.03em; }
-.md ul, .md ol { margin: 0.25em 0; padding-inline-start: 1.5em; }
+/* Mixed-direction lists: room for bullets on both sides, each item keeps its own direction. */
+.md ul, .md ol { margin: 0.25em 0; padding: 0 1.4em; }
 .md blockquote { margin: 0.3em 0; padding-inline-start: 10px; border-inline-start: 2px solid var(--muted); color: var(--muted); }
 .md a { color: var(--link); }
 .md table { border-collapse: collapse; margin: 0.4em 0; display: block; overflow-x: auto; }
@@ -241,7 +248,7 @@ kbd { font-family: var(--mono); font-size: 0.85em; border: 1px solid var(--borde
 .tool.done .bullet { color: var(--ok); } .tool.error .bullet { color: var(--danger); }
 .tool .call { flex: 1; min-width: 0; font-family: var(--mono); font-size: 0.9em; line-height: 2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tool .call .name { font-weight: 700; } .tool .call .arg { color: var(--muted); }
-.tool .call .fa { font-family: var(--font); color: var(--dim); font-size: 0.9em; margin-left: 6px; direction: rtl; unicode-bidi: isolate; }
+.tool .call .fa { font-family: var(--font); color: var(--dim); font-size: 0.9em; margin-left: 6px; unicode-bidi: plaintext; }
 .tool .call .open { color: var(--link); cursor: pointer; font-family: var(--font); font-size: 0.85em; margin-left: 8px; }
 .tool .result { display: flex; gap: 6px; margin-left: 1.6em; color: var(--muted); font-size: 0.85em; }
 .tool .result .elbow { flex: none; font-family: var(--mono); }
@@ -330,7 +337,7 @@ kbd { font-family: var(--mono); font-size: 0.85em; border: 1px solid var(--borde
   display: block; width: 100%; resize: none; max-height: 40vh; min-height: 3.2em;
   font-family: var(--font); font-size: 1em; line-height: 1.7; color: var(--fg); background: transparent;
   border: 1.5px solid var(--accent); border-radius: 10px; padding: 6px 12px;
-  unicode-bidi: plaintext; text-align: start; outline: none;
+  text-align: start; outline: none; overflow-wrap: break-word; word-break: normal;
 }
 #input::placeholder { color: var(--dim); }
 .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--border); }
@@ -373,7 +380,7 @@ button.stop { background: var(--danger); }
 .menu .mi .md2 { display: block; color: var(--muted); font-size: 0.85em; white-space: normal; }
 .menu .mi.checked { color: var(--accent); }
 .menu .mi .ck { width: 1em; color: var(--accent); }
-.menu .mh { color: var(--dim); font-size: 0.72em; letter-spacing: 0.1em; padding: 6px 10px 2px; }
+.menu .mh { color: var(--dim); font-size: 0.72em; padding: 6px 10px 2px; }
 .menu .msep { border-top: 1px solid var(--border); margin: 4px 0; }
 .menu input { width: calc(100% - 8px); margin: 4px; font-family: var(--font); color: var(--fg); background: transparent; border: 1.5px solid var(--accent); border-radius: 8px; padding: 3px 10px; outline: none; }
 .menu .file { direction: ltr; font-family: var(--mono); font-size: 0.85em; }
@@ -415,3 +422,29 @@ button.send .ico, button.stop .ico { width: 19px; height: 19px; }
   #ctxChip { display: none !important; }
   .tb.dd .lbl { max-width: 90px; }
 }
+
+/* GapGPT engine: effort only applies to the Claude Code CLI. */
+body.gapgpt #ddEffort { display: none; }
+
+/* GapGPT per-model usage table */
+.md table.usage-table { display: table; width: 100%; font-size: 0.86em; }
+.usage-table th, .usage-table td { padding: 3px 6px; text-align: right; white-space: nowrap; }
+.usage-table th:first-child, .usage-table td:first-child { text-align: left; }
+.usage-table tr.cur td:first-child { color: var(--link); font-weight: 600; }
+.usage-table tr.tot td { font-weight: 600; border-top: 1px solid var(--border); }
+.usage-table .ubar { display: inline-block; width: 60px; height: 5px; border-radius: 3px; background: var(--user-bg); overflow: hidden; vertical-align: middle; }
+.usage-table .ubar span { display: block; height: 100%; background: var(--link); }
+
+/* Navy brand buttons need an outline on the dark theme to stand out from the panel. */
+body:not(.light) button.send, body:not(.light) button.primary { box-shadow: 0 0 0 1px var(--accent-soft); }
+
+/* Letter-spacing disconnects Persian letters; only use it for the English UI. */
+html[lang="en"] .cardbox h4 { letter-spacing: 0.12em; }
+html[lang="en"] .cardbox h5 { letter-spacing: 0.1em; }
+/* Persian joins letters with ZWNJ / kashida: never let the browser hyphenate or break inside words. */
+body { hyphens: manual; text-rendering: optimizeLegibility; font-feature-settings: "kern", "liga", "calt"; }
+html[lang="en"] .menu .mh { letter-spacing: 0.1em; }
+.tb.lang { color: var(--muted); gap: 3px; }
+.tb.lang .lbl { font-family: var(--mono); font-size: 0.82em; font-weight: 600; letter-spacing: 0; }
+.tb.lang:hover { color: var(--fg); }
+.info .lim .k, .info .lim .v, .info .v { unicode-bidi: isolate; }

@@ -7,18 +7,22 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.project.guessProjectDir
+import ir.gapgpt.settings.I18n
 import ir.gapgpt.ui.ChatToolWindowFactory
 
 /** Base for editor actions that turn the current selection into a prompt. */
 abstract class SelectionToClaudeAction : AnAction(), DumbAware {
 
-    /** Persian instruction placed before the code. Null = only insert into the input box. */
+    /** Instruction placed before the code (in the interface language). Null = only insert into the input box. */
     protected abstract val instruction: String?
+    /** Menu text in English / Persian. */
+    protected abstract val label: Pair<String, String>
 
     override fun getActionUpdateThread() = ActionUpdateThread.BGT
 
     override fun update(e: AnActionEvent) {
         e.presentation.isEnabledAndVisible = e.project != null && e.getData(CommonDataKeys.EDITOR) != null
+        e.presentation.text = I18n.t(label.first, label.second)
     }
 
     override fun actionPerformed(e: AnActionEvent) {
@@ -41,7 +45,7 @@ abstract class SelectionToClaudeAction : AnAction(), DumbAware {
         }
         val lang = file?.extension.orEmpty()
 
-        val ref = "@$relPath (خطوط $startLine تا $endLine)"
+        val ref = I18n.t("@$relPath (lines $startLine–$endLine)", "@$relPath (خطوط $startLine تا $endLine)")
         val block = "```$lang\n$code\n```"
         val prompt = buildString {
             instruction?.let { append(it).append("\n\n") }
@@ -64,6 +68,7 @@ class SendSelectionAction : AnAction(), DumbAware {
     override fun update(e: AnActionEvent) {
         e.presentation.isEnabledAndVisible = e.project != null &&
             (e.getData(CommonDataKeys.EDITOR) != null || e.getData(CommonDataKeys.VIRTUAL_FILE) != null)
+        e.presentation.text = I18n.t("Insert File Reference into Chat (@File#L1-99)", "درج ارجاع فایل در گفتگو (@File#L1-99)")
     }
 
     override fun actionPerformed(e: AnActionEvent) {
@@ -84,18 +89,23 @@ class SendSelectionAction : AnAction(), DumbAware {
 }
 
 class ExplainSelectionAction : SelectionToClaudeAction() {
-    override val instruction = "این کد را به فارسی و قدم‌به‌قدم توضیح بده:"
+    override val label = "Explain This Code" to "توضیح این کد"
+    override val instruction get() = I18n.t("Explain this code step by step:", "این کد را به فارسی و قدم‌به‌قدم توضیح بده:")
 }
 
 class ReviewSelectionAction : SelectionToClaudeAction() {
-    override val instruction =
-        "این کد را بررسی کن: باگ‌ها، مشکلات امنیتی و کارایی را پیدا کن و پیشنهاد بهبود بده (فعلاً فایل را تغییر نده):"
+    override val label = "Review and Suggest Improvements" to "بررسی و پیشنهاد بهبود"
+    override val instruction get() = I18n.t(
+        "Review this code: find bugs, security and performance problems and suggest improvements (don't change the file yet):",
+        "این کد را بررسی کن: باگ‌ها، مشکلات امنیتی و کارایی را پیدا کن و پیشنهاد بهبود بده (فعلاً فایل را تغییر نده):",
+    )
 }
 
 class OpenChatAction : AnAction(), DumbAware {
     override fun getActionUpdateThread() = ActionUpdateThread.BGT
     override fun update(e: AnActionEvent) {
         e.presentation.isEnabled = e.project != null
+        e.presentation.text = I18n.t("GapGPT: Open Chat", "GapGPT: باز کردن گفتگو")
     }
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return

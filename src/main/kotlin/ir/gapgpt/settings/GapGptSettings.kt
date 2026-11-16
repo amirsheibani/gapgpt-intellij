@@ -10,6 +10,18 @@ import com.intellij.util.xmlb.XmlSerializerUtil
 class GapGptSettings : PersistentStateComponent<GapGptSettings.State> {
 
     class State {
+
+        /**
+         * Which engine answers chats: [BACKEND_GAPGPT] talks to the GapGPT API directly (all its models);
+         * [BACKEND_CLAUDE] runs the local Claude Code CLI exactly as installed, untouched.
+         */
+        var backend: String = BACKEND_GAPGPT
+        /** GapGPT OpenAI-compatible base URL. The API key is in the password safe, see [GapGptApi]. */
+        var gapgptBaseUrl: String = GapGptApi.DEFAULT_BASE_URL
+        /** Model used by the GapGPT engine (independent of the Claude Code [model]). */
+        var gapgptModel: String = GapGptApi.DEFAULT_MODEL
+        /** Let GapGPT models read/edit files, run commands and query the IDE (function calling). */
+        var gapgptTools: Boolean = true
         /** Path to the `claude` executable. Empty = auto-detect. */
         var cliPath: String = ""
         /** Empty = Claude Code default model. e.g. "sonnet", "opus". */
@@ -29,8 +41,10 @@ class GapGptSettings : PersistentStateComponent<GapGptSettings.State> {
         var guardWhitelist: List<String> = emptyList()
         /** Keep the chat scrolled to the bottom while Claude writes. */
         var autoFollow: Boolean = true
-        /** Ask Claude to answer in Persian. */
-        var respondInPersian: Boolean = true
+        /** Interface language of the plugin: "en" (default) or "fa". */
+        var uiLanguage: String = "en"
+        /** Reply language: "auto" = same as the user's message, "fa" or "en". */
+        var replyLanguage: String = "auto"
         /** Replace Arabic ي/ك with Persian ی/ک before sending. */
         var normalizeArabicChars: Boolean = true
         /** Optional HTTPS proxy passed to the CLI, e.g. http://127.0.0.1:10809 */
@@ -50,6 +64,9 @@ class GapGptSettings : PersistentStateComponent<GapGptSettings.State> {
     }
 
     companion object {
+        const val BACKEND_GAPGPT = "gapgpt"
+        const val BACKEND_CLAUDE = "claude"
+
         fun get(): State =
             ApplicationManager.getApplication().getService(GapGptSettings::class.java).state
     }

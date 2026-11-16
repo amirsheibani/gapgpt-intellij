@@ -9,8 +9,10 @@ import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.util.execution.ParametersListUtil
 import ir.gapgpt.PluginLog
+import ir.gapgpt.api.ChatBackend
 import ir.gapgpt.ide.IdeMcpServer
 import ir.gapgpt.settings.GapGptSettings
+import ir.gapgpt.settings.I18n
 import java.io.File
 import java.nio.charset.StandardCharsets.UTF_8
 
@@ -22,7 +24,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 class ClaudeCliRunner(
     private val workDir: String?,
     private val listener: Listener,
-) {
+) : ChatBackend {
     interface Listener {
         fun onEvent(event: JsonObject)
         fun onStderr(line: String)
@@ -34,11 +36,11 @@ class ClaudeCliRunner(
     private var process: Process? = null
 
     @Volatile
-    var sessionId: String? = null
+    override var sessionId: String? = null
 
-    val isRunning: Boolean get() = process?.isAlive == true
+    override val isRunning: Boolean get() = process?.isAlive == true
 
-    fun resetSession() {
+    override fun resetSession() {
         stop()
         sessionId = null
     }
@@ -47,7 +49,7 @@ class ClaudeCliRunner(
      * @param mcpConfigPath `--mcp-config` file of the IDE MCP server; when set, permission prompts
      *   are routed to the IDE via `--permission-prompt-tool`.
      */
-    fun send(prompt: String, mcpConfigPath: String? = null) {
+    override fun send(prompt: String, mcpConfigPath: String?) {
         if (isRunning) return
         val s = GapGptSettings.get()
         val exe = locateCli(s.cliPath)
@@ -75,7 +77,7 @@ class ClaudeCliRunner(
         }
         if (s.model.isNotBlank()) cmd.addParameters("--model", s.model.trim())
         if (s.effort.isNotBlank()) cmd.addParameters("--effort", s.effort.trim())
-        if (s.respondInPersian) cmd.addParameters("--append-system-prompt", PERSIAN_SYSTEM_PROMPT)
+        cmd.addParameters("--append-system-prompt", I18n.replyInstruction(s.replyLanguage))
         sessionId?.let { cmd.addParameters("--resume", it) }
         if (s.extraArgs.isNotBlank()) cmd.addParameters(ParametersListUtil.parse(s.extraArgs))
 
@@ -146,7 +148,7 @@ class ClaudeCliRunner(
         }
     }
 
-    fun stop() {
+    override fun stop() {
         val p = process ?: return
         try {
             // On Windows `claude.cmd` spawns node as a child; kill the whole tree.
