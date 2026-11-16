@@ -1,4 +1,4 @@
-package ir.claudefa
+package ir.gapgpt
 
 import com.intellij.openapi.diagnostic.Logger
 import java.time.LocalTime
@@ -17,7 +17,7 @@ object PluginLog {
     private val lines = ArrayDeque<Line>()
     private val listeners = mutableListOf<(Line) -> Unit>()
     private val fmt = DateTimeFormatter.ofPattern("HH:mm:ss")
-    private val ideLog = Logger.getInstance("ClaudeFA")
+    private val ideLog = Logger.getInstance("GapGPT")
 
     @Volatile
     var debugEnabled = false

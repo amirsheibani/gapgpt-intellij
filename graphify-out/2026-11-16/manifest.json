@@ -17,37 +17,37 @@
     "ast_hash": "003010a5bc02fa5a12f28c3db23266fb",
     "semantic_hash": "003010a5bc02fa5a12f28c3db23266fb"
   },
-  "src/main/kotlin/ir/claudefa/actions/SelectionActions.kt": {
+  "src/main/kotlin/ir/gapgpt/actions/SelectionActions.kt": {
     "mtime": 1794820621.9397743,
     "seen": 1794820811.3842292,
     "ast_hash": "0afa439ee7e95e2bd7ebc8486fbded26",
     "semantic_hash": ""
   },
-  "src/main/kotlin/ir/claudefa/cli/ClaudeCliRunner.kt": {
+  "src/main/kotlin/ir/gapgpt/cli/ClaudeCliRunner.kt": {
     "mtime": 1794824080.6167254,
     "seen": 1794825526.340798,
     "ast_hash": "14753e40ee47507652db7abc152ff76f",
     "semantic_hash": ""
   },
-  "src/main/kotlin/ir/claudefa/settings/ClaudeFaConfigurable.kt": {
+  "src/main/kotlin/ir/gapgpt/settings/GapGptConfigurable.kt": {
     "mtime": 1794822710.702291,
     "seen": 1794822734.724523,
     "ast_hash": "1bf3eedf720c7474cab64d45f967a40b",
     "semantic_hash": ""
   },
-  "src/main/kotlin/ir/claudefa/settings/ClaudeFaSettings.kt": {
+  "src/main/kotlin/ir/gapgpt/settings/GapGptSettings.kt": {
     "mtime": 1794823952.6469526,
     "seen": 1794825526.340811,
     "ast_hash": "9af2b3ce3222bee2684e70d7d2459ed3",
     "semantic_hash": ""
   },
-  "src/main/kotlin/ir/claudefa/ui/ChatPanel.kt": {
+  "src/main/kotlin/ir/gapgpt/ui/ChatPanel.kt": {
     "mtime": 1794826345.9827511,
     "seen": 1794826637.1488051,
     "ast_hash": "222fe03fd71f1d0f59463e4c523bdf15",
     "semantic_hash": ""
   },
-  "src/main/kotlin/ir/claudefa/ui/ChatToolWindowFactory.kt": {
+  "src/main/kotlin/ir/gapgpt/ui/ChatToolWindowFactory.kt": {
     "mtime": 1794822710.701761,
     "seen": 1794822734.7245262,
     "ast_hash": "fb284d1123d989575383bf68d3c5530c",
@@ -83,37 +83,37 @@
     "ast_hash": "0b43fbe253e4f105715644c14d401af0",
     "semantic_hash": ""
   },
-  "src/main/kotlin/ir/claudefa/ide/DiffPreview.kt": {
+  "src/main/kotlin/ir/gapgpt/ide/DiffPreview.kt": {
     "mtime": 1794820538.1003838,
     "seen": 1794820811.3842309,
     "ast_hash": "3c04a82df3582ccdf75e545a88a0c0ef",
     "semantic_hash": ""
   },
-  "src/main/kotlin/ir/claudefa/ide/IdeMcpServer.kt": {
+  "src/main/kotlin/ir/gapgpt/ide/IdeMcpServer.kt": {
     "mtime": 1794824023.0309367,
     "seen": 1794825526.340804,
     "ast_hash": "598de7440e2717435e7e8a6439276a24",
     "semantic_hash": ""
   },
-  "src/main/kotlin/ir/claudefa/ide/IdeTools.kt": {
+  "src/main/kotlin/ir/gapgpt/ide/IdeTools.kt": {
     "mtime": 1794820479.8074944,
     "seen": 1794820811.384233,
     "ast_hash": "6af2cff6c4fbbd31f347c34b0a7d3ec3",
     "semantic_hash": ""
   },
-  "src/main/kotlin/ir/claudefa/ide/PermissionBroker.kt": {
+  "src/main/kotlin/ir/gapgpt/ide/PermissionBroker.kt": {
     "mtime": 1794824058.8724115,
     "seen": 1794825526.340807,
     "ast_hash": "85ef6c2bc772edd67c83e138c526bcba",
     "semantic_hash": ""
   },
-  "src/main/kotlin/ir/claudefa/ide/ProjectFileSearch.kt": {
+  "src/main/kotlin/ir/gapgpt/ide/ProjectFileSearch.kt": {
     "mtime": 1794820564.529249,
     "seen": 1794820811.384235,
     "ast_hash": "ab384c417edc7aa344215a77caa2b225",
     "semantic_hash": ""
   },
-  "src/main/kotlin/ir/claudefa/ide/SelectionTracker.kt": {
+  "src/main/kotlin/ir/gapgpt/ide/SelectionTracker.kt": {
     "mtime": 1794820498.3371818,
     "seen": 1794820811.384236,
     "ast_hash": "ead5a3a964e506a8376013587be12f9f",
@@ -137,43 +137,43 @@
     "ast_hash": "848529f66cad8aa085a7b01e05d73cfe",
     "semantic_hash": ""
   },
-  "src/main/kotlin/ir/claudefa/ui/SlashCommands.kt": {
+  "src/main/kotlin/ir/gapgpt/ui/SlashCommands.kt": {
     "mtime": 1794823096.6151102,
     "seen": 1794823383.9739451,
     "ast_hash": "c72cfafba5a69a6f9311070f715bbec1",
     "semantic_hash": ""
   },
-  "src/main/kotlin/ir/claudefa/PluginLog.kt": {
+  "src/main/kotlin/ir/gapgpt/PluginLog.kt": {
     "mtime": 1794823943.5964744,
     "seen": 1794825526.3407948,
     "ast_hash": "3f7320575787109461326b1005a00a33",
     "semantic_hash": ""
   },
-  "src/main/kotlin/ir/claudefa/cli/CliInfo.kt": {
+  "src/main/kotlin/ir/gapgpt/cli/CliInfo.kt": {
     "mtime": 1794823981.0575733,
     "seen": 1794825526.340799,
     "ast_hash": "9505c099d2e15ca027dad8c9386ee505",
     "semantic_hash": ""
   },
-  "src/main/kotlin/ir/claudefa/ide/DependencyScanner.kt": {
+  "src/main/kotlin/ir/gapgpt/ide/DependencyScanner.kt": {
     "mtime": 1794824003.958467,
     "seen": 1794825526.3408,
     "ast_hash": "d4c60d7021ca94943101621dd4f9abd6",
     "semantic_hash": ""
   },
-  "src/main/kotlin/ir/claudefa/ide/GitInfo.kt": {
+  "src/main/kotlin/ir/gapgpt/ide/GitInfo.kt": {
     "mtime": 1794823968.633725,
     "seen": 1794825526.340802,
     "ast_hash": "5ade3e4e2064f9405b25208fde09031c",
     "semantic_hash": ""
   },
-  "src/main/kotlin/ir/claudefa/ide/Guard.kt": {
+  "src/main/kotlin/ir/gapgpt/ide/Guard.kt": {
     "mtime": 1794824195.9082742,
     "seen": 1794825526.3408031,
     "ast_hash": "3fba8d27296ecb182ee369c9218ff1a4",
     "semantic_hash": ""
   },
-  "src/main/kotlin/ir/claudefa/cli/ClaudeConfig.kt": {
+  "src/main/kotlin/ir/gapgpt/cli/ClaudeConfig.kt": {
     "mtime": 1794826345.9820328,
     "seen": 1794826637.148791,
     "ast_hash": "89d5ee87f2aa53196928db53ee21cacf",

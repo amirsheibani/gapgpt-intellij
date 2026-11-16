@@ -1,4 +1,4 @@
-package ir.claudefa.ui
+package ir.gapgpt.ui
 
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.DumbAware
@@ -14,7 +14,7 @@ import javax.swing.SwingConstants
 class ChatToolWindowFactory : ToolWindowFactory, DumbAware {
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        toolWindow.stripeTitle = "ClaudeFA"
+        toolWindow.stripeTitle = "GapGPT"
         val factory = ContentFactory.getInstance()
         val jcefSupported = try {
             JBCefApp.isSupported()
@@ -39,7 +39,7 @@ class ChatToolWindowFactory : ToolWindowFactory, DumbAware {
     }
 
     companion object {
-        const val ID = "ClaudeFa"
+        const val ID = "GapGpt"
 
         /** Opens the tool window and runs [block] with the chat panel once it exists. */
         fun withPanel(project: Project, block: (ChatPanel) -> Unit) {

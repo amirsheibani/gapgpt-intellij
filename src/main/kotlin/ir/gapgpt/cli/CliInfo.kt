@@ -1,10 +1,10 @@
-package ir.claudefa.cli
+package ir.gapgpt.cli
 
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import ir.claudefa.PluginLog
-import ir.claudefa.settings.ClaudeFaSettings
+import ir.gapgpt.PluginLog
+import ir.gapgpt.settings.GapGptSettings
 import java.io.File
 import java.util.concurrent.TimeUnit
 
@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit
 object CliInfo {
 
     private fun run(workDir: String?, stdin: String?, vararg args: String, timeoutSec: Long = 60): String? {
-        val exe = ClaudeCliRunner.locateCli(ClaudeFaSettings.get().cliPath) ?: return null
+        val exe = ClaudeCliRunner.locateCli(GapGptSettings.get().cliPath) ?: return null
         return try {
             val pb = ProcessBuilder(listOf(exe) + args)
             workDir?.let { pb.directory(File(it)) }

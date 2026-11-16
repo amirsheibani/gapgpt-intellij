@@ -1,10 +1,10 @@
-package ir.claudefa.ide
+package ir.gapgpt.ide
 
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import ir.claudefa.PluginLog
-import ir.claudefa.settings.ClaudeFaSettings
+import ir.gapgpt.PluginLog
+import ir.gapgpt.settings.GapGptSettings
 import java.io.File
 import java.net.InetSocketAddress
 import java.net.ProxySelector
@@ -98,7 +98,7 @@ object DependencyScanner {
 
     private fun client(): HttpClient {
         val b = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(15))
-        ClaudeFaSettings.get().httpsProxy.trim().takeIf { it.isNotBlank() }?.let { p ->
+        GapGptSettings.get().httpsProxy.trim().takeIf { it.isNotBlank() }?.let { p ->
             runCatching {
                 val u = URI(p)
                 b.proxy(ProxySelector.of(InetSocketAddress(u.host, if (u.port > 0) u.port else 80)))

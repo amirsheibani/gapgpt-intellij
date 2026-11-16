@@ -1,4 +1,4 @@
-package ir.claudefa.ide
+package ir.gapgpt.ide
 
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.components.Service

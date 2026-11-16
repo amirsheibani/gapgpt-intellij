@@ -1,4 +1,4 @@
-package ir.claudefa.cli
+package ir.gapgpt.cli
 
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject

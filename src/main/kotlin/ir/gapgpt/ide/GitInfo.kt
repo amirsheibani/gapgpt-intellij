@@ -1,4 +1,4 @@
-package ir.claudefa.ide
+package ir.gapgpt.ide
 
 import com.google.gson.JsonObject
 import java.io.File

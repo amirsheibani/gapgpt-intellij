@@ -1,7 +1,7 @@
 <idea-plugin>
-    <id>ir.claudefa.intellij</id>
-    <name>ClaudeFA</name>
-    <vendor>ClaudeFA</vendor>
+    <id>ir.gapgpt.intellij</id>
+    <name>GapGPT</name>
+    <vendor>GapGPT</vendor>
 
     <description><![CDATA[
     <p>Chat with <b>Claude Code</b> inside IntelliJ-based IDEs with full Persian (Farsi) / RTL support.</p>
@@ -24,48 +24,48 @@
     <!-- Since 2026.x JCEF lives in a separate bundled plugin; without this dependency
          JBCefApp/JBCefBrowser are not visible to our class loader. Optional so older IDEs
          (where JCEF is part of the core) still load the plugin. -->
-    <depends optional="true" config-file="claudefa-jcef.xml">com.intellij.modules.jcef</depends>
+    <depends optional="true" config-file="gapgpt-jcef.xml">com.intellij.modules.jcef</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow id="ClaudeFa"
+        <toolWindow id="GapGpt"
                     anchor="right"
                     icon="/icons/claude.svg"
-                    factoryClass="ir.claudefa.ui.ChatToolWindowFactory"/>
+                    factoryClass="ir.gapgpt.ui.ChatToolWindowFactory"/>
 
-        <applicationService serviceImplementation="ir.claudefa.settings.ClaudeFaSettings"/>
+        <applicationService serviceImplementation="ir.gapgpt.settings.GapGptSettings"/>
 
         <applicationConfigurable parentId="tools"
-                                 instance="ir.claudefa.settings.ClaudeFaConfigurable"
-                                 id="ir.claudefa.settings"
-                                 displayName="ClaudeFA"/>
+                                 instance="ir.gapgpt.settings.GapGptConfigurable"
+                                 id="ir.gapgpt.settings"
+                                 displayName="GapGPT"/>
 
-        <notificationGroup id="ClaudeFA" displayType="BALLOON"/>
+        <notificationGroup id="GapGPT" displayType="BALLOON"/>
     </extensions>
 
     <actions>
-        <group id="ClaudeFa.EditorGroup" text="ClaudeFA" popup="true" icon="/icons/claude.svg">
+        <group id="GapGpt.EditorGroup" text="GapGPT" popup="true" icon="/icons/claude.svg">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
-            <action id="ClaudeFa.SendSelection"
-                    class="ir.claudefa.actions.SendSelectionAction"
+            <action id="GapGpt.SendSelection"
+                    class="ir.gapgpt.actions.SendSelectionAction"
                     text="درج ارجاع فایل در گفتگو (@File#L1-99)"
                     description="Insert a reference to the current file / selected lines into the Claude chat input">
                 <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
                 <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift K"/>
             </action>
-            <action id="ClaudeFa.Explain"
-                    class="ir.claudefa.actions.ExplainSelectionAction"
+            <action id="GapGpt.Explain"
+                    class="ir.gapgpt.actions.ExplainSelectionAction"
                     text="توضیح این کد"
                     description="Ask Claude to explain the selected code in Persian"/>
-            <action id="ClaudeFa.Review"
-                    class="ir.claudefa.actions.ReviewSelectionAction"
+            <action id="GapGpt.Review"
+                    class="ir.gapgpt.actions.ReviewSelectionAction"
                     text="بررسی و پیشنهاد بهبود"
                     description="Ask Claude to review the selected code"/>
         </group>
-        <action id="ClaudeFa.Open"
-                class="ir.claudefa.actions.OpenChatAction"
-                text="ClaudeFA: باز کردن گفتگو"
+        <action id="GapGpt.Open"
+                class="ir.gapgpt.actions.OpenChatAction"
+                text="GapGPT: باز کردن گفتگو"
                 icon="/icons/claude.svg"
-                description="Open the ClaudeFA chat">
+                description="Open the GapGPT chat">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
             <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift L"/>
         </action>

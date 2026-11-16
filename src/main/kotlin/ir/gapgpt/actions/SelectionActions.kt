@@ -1,4 +1,4 @@
-package ir.claudefa.actions
+package ir.gapgpt.actions
 
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
@@ -7,7 +7,7 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.project.guessProjectDir
-import ir.claudefa.ui.ChatToolWindowFactory
+import ir.gapgpt.ui.ChatToolWindowFactory
 
 /** Base for editor actions that turn the current selection into a prompt. */
 abstract class SelectionToClaudeAction : AnAction(), DumbAware {

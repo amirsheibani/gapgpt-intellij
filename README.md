@@ -1,4 +1,4 @@
-# ClaudeFA — پلاگین IntelliJ برای Claude Code با پشتیبانی کامل فارسی
+# GapGPT — پلاگین IntelliJ برای Claude Code با پشتیبانی کامل فارسی
 
 پنل گفتگو با Claude Code داخل IDEهای JetBrains (IntelliJ IDEA، Android Studio، PyCharm، WebStorm و ...)،
 با نمایش درست متن فارسی، راست‌به‌چپ و متن‌های ترکیبی فارسی/انگلیسی.
@@ -14,7 +14,7 @@
 - نمایش زنده (streaming) پاسخ، نمایش ابزارهایی که Claude اجرا می‌کند (خواندن/ویرایش فایل، اجرای دستور ...)
 - دکمه‌های **کپی** و **درج در ویرایشگر** برای هر بلوک کد
 - کلیک روی نام فایل در پاسخ ← باز شدن فایل در IDE
-- کلیک راست روی کد ← **ClaudeFA** ← ارسال انتخاب / توضیح کد / بررسی کد
+- کلیک راست روی کد ← **GapGPT** ← ارسال انتخاب / توضیح کد / بررسی کد
 - ادامهٔ گفتگو با `--resume` و دکمهٔ «گفتگوی جدید»
 - تنظیمات: مسیر CLI، مدل، حالت دسترسی، پراکسی HTTPS، پاسخ به فارسی، تبدیل «ي/ك» عربی به «ی/ک»
 
@@ -30,7 +30,7 @@
 ```bash
 ./gradlew buildPlugin          # در ویندوز: gradlew.bat buildPlugin
 ```
-فایل `build/distributions/claude-fa-intellij-0.1.0.zip` ساخته می‌شود.
+فایل `build/distributions/gapgpt-intellij-0.1.0.zip` ساخته می‌شود.
 در IDE: **Settings › Plugins › ⚙ › Install Plugin from Disk…** و انتخاب همان zip.
 
 برای اجرای یک IDE آزمایشی همراه با پلاگین:
@@ -46,9 +46,9 @@
 > ```
 
 ## استفاده
-- پنل **ClaudeFA** در نوار سمت راست IDE (یا `Ctrl+Alt+Shift+L`)
+- پنل **GapGPT** در نوار سمت راست IDE (یا `Ctrl+Alt+Shift+L`)
 - انتخاب کد و `Ctrl+Alt+Shift+K` ← کد با مسیر و شمارهٔ خطوط به کادر ورودی اضافه می‌شود
-- تنظیمات: **Settings › Tools › ClaudeFA**
+- تنظیمات: **Settings › Tools › GapGPT**
 
 ### حالت‌های دسترسی
 | حالت | توضیح |
@@ -62,7 +62,7 @@
 
 ## ساختار پروژه
 ```
-src/main/kotlin/ir/claudefa/
+src/main/kotlin/ir/gapgpt/
   cli/ClaudeCliRunner.kt        اجرای claude، خواندن stream-json، --resume
   ui/ChatPanel.kt               JCEF browser + پل JS ↔ Kotlin
   ui/ChatToolWindowFactory.kt   ثبت پنل

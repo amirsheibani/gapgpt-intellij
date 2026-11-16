@@ -1,4 +1,4 @@
-package ir.claudefa.cli
+package ir.gapgpt.cli
 
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -8,9 +8,9 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.util.execution.ParametersListUtil
-import ir.claudefa.PluginLog
-import ir.claudefa.ide.IdeMcpServer
-import ir.claudefa.settings.ClaudeFaSettings
+import ir.gapgpt.PluginLog
+import ir.gapgpt.ide.IdeMcpServer
+import ir.gapgpt.settings.GapGptSettings
 import java.io.File
 import java.nio.charset.StandardCharsets.UTF_8
 
@@ -49,12 +49,12 @@ class ClaudeCliRunner(
      */
     fun send(prompt: String, mcpConfigPath: String? = null) {
         if (isRunning) return
-        val s = ClaudeFaSettings.get()
+        val s = GapGptSettings.get()
         val exe = locateCli(s.cliPath)
         if (exe == null) {
             listener.onStartFailed(
                 "فایل اجرایی claude پیدا نشد. ابتدا Claude Code را نصب کنید " +
-                    "(npm install -g @anthropic-ai/claude-code) یا مسیر آن را در Settings › Tools › ClaudeFA وارد کنید."
+                    "(npm install -g @anthropic-ai/claude-code) یا مسیر آن را در Settings › Tools › GapGPT وارد کنید."
             )
             return
         }

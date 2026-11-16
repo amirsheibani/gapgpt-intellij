@@ -410,16 +410,16 @@
     Read: "خواندن", Write: "نوشتن", Edit: "ویرایش", MultiEdit: "ویرایش", Bash: "اجرای دستور",
     Glob: "جستجوی فایل", Grep: "جستجو در کد", LS: "فهرست", WebFetch: "دریافت صفحه", WebSearch: "جستجوی وب",
     Task: "زیرعامل", Agent: "زیرعامل", TodoWrite: "فهرست کارها", NotebookEdit: "ویرایش نوت‌بوک",
-    mcp__claudefa__getDiagnostics: "بررسی خطاهای IDE", mcp__claudefa__getOpenEditors: "فایل‌های باز IDE",
-    mcp__claudefa__getCurrentSelection: "انتخاب فعلی IDE", mcp__claudefa__openFile: "باز کردن فایل در IDE",
-    mcp__claudefa__getWorkspaceFolders: "پوشه‌های پروژه",
+    mcp__gapgpt__getDiagnostics: "بررسی خطاهای IDE", mcp__gapgpt__getOpenEditors: "فایل‌های باز IDE",
+    mcp__gapgpt__getCurrentSelection: "انتخاب فعلی IDE", mcp__gapgpt__openFile: "باز کردن فایل در IDE",
+    mcp__gapgpt__getWorkspaceFolders: "پوشه‌های پروژه",
   };
 
   function displayName(name) {
     if (name === "Edit" || name === "MultiEdit") return "Update";
     if (name === "TodoWrite") return "Update Todos";
     const m = /^mcp__(.+?)__(.+)$/.exec(name || "");
-    if (m) return (m[1] === "claudefa" ? "ide" : m[1]) + " - " + m[2] + " (MCP)";
+    if (m) return (m[1] === "gapgpt" ? "ide" : m[1]) + " - " + m[2] + " (MCP)";
     return name;
   }
 
@@ -923,7 +923,7 @@
           if (ev.session_id) c.sessionId = ev.session_id;
           if (!c.connected) {
             c.connected = true;
-            const mcp = (ev.mcp_servers || []).find((m) => m.name === "claudefa");
+            const mcp = (ev.mcp_servers || []).find((m) => m.name === "gapgpt");
             notice(c, c.main, "✓ آماده — Claude Code" + (mcp && mcp.status === "connected" ? " به IDE متصل شد" : " اجرا شد"), "");
           }
           if (c === chat()) renderInfo();

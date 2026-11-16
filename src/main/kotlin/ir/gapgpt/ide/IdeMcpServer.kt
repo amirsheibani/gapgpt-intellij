@@ -1,4 +1,4 @@
-package ir.claudefa.ide
+package ir.gapgpt.ide
 
 import com.google.gson.Gson
 import com.google.gson.JsonArray
@@ -59,8 +59,8 @@ class IdeMcpServer(private val project: Project) : Disposable {
             if (server == null) start()
             writeConfig(chatId).absolutePath
         } catch (e: Exception) {
-            LOG.warn("Could not start ClaudeFA IDE MCP server", e)
-            ir.claudefa.PluginLog.warn("mcp", "Could not start IDE MCP server: ${e.message}")
+            LOG.warn("Could not start GapGPT IDE MCP server", e)
+            ir.gapgpt.PluginLog.warn("mcp", "Could not start IDE MCP server: ${e.message}")
             null
         }
     }
@@ -71,7 +71,7 @@ class IdeMcpServer(private val project: Project) : Disposable {
 
     private fun start() {
         val exec = Executors.newCachedThreadPool { r ->
-            Thread(r, "ClaudeFa-MCP").apply { isDaemon = true }
+            Thread(r, "GapGpt-MCP").apply { isDaemon = true }
         }
         val s = HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0)
         s.createContext("/mcp") { ex ->
@@ -88,8 +88,8 @@ class IdeMcpServer(private val project: Project) : Disposable {
         s.start()
         server = s
         executor = exec
-        LOG.info("ClaudeFA IDE MCP server listening on 127.0.0.1:${s.address.port}")
-        ir.claudefa.PluginLog.info("mcp", "IDE MCP server listening on 127.0.0.1:${s.address.port}")
+        LOG.info("GapGPT IDE MCP server listening on 127.0.0.1:${s.address.port}")
+        ir.gapgpt.PluginLog.info("mcp", "IDE MCP server listening on 127.0.0.1:${s.address.port}")
     }
 
     private fun writeConfig(chatId: String): File {
@@ -103,7 +103,7 @@ class IdeMcpServer(private val project: Project) : Disposable {
                 })
             })
         }
-        val f = configFiles[chatId] ?: File.createTempFile("claudefa-mcp-", ".json").also {
+        val f = configFiles[chatId] ?: File.createTempFile("gapgpt-mcp-", ".json").also {
             it.deleteOnExit()
             runCatching {
                 Files.setPosixFilePermissions(it.toPath(), PosixFilePermissions.fromString("rw-------"))
@@ -261,7 +261,7 @@ class IdeMcpServer(private val project: Project) : Disposable {
     companion object {
         private val LOG = logger<IdeMcpServer>()
 
-        const val SERVER_NAME = "claudefa"
+        const val SERVER_NAME = "gapgpt"
         const val PERMISSION_TOOL = "permission_prompt"
         const val PERMISSION_TOOL_FQN = "mcp__${SERVER_NAME}__$PERMISSION_TOOL"
 

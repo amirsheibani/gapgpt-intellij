@@ -1,4 +1,4 @@
-package ir.claudefa.ide
+package ir.gapgpt.ide
 
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager

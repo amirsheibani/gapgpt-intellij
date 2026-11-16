@@ -1,8 +1,8 @@
-package ir.claudefa.ide
+package ir.gapgpt.ide
 
 import com.google.gson.JsonObject
-import ir.claudefa.PluginLog
-import ir.claudefa.settings.ClaudeFaSettings
+import ir.gapgpt.PluginLog
+import ir.gapgpt.settings.GapGptSettings
 import java.io.File
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -88,7 +88,7 @@ object Guard {
 
     /** The first matching enabled rule, or null. Logs "disabled" when only a disabled rule matched. */
     fun evaluate(chat: String, tool: String, input: JsonObject, projectDir: String?): Rule? {
-        val s = ClaudeFaSettings.get()
+        val s = GapGptSettings.get()
         val t = target(tool, input)
         if (t.isBlank()) return null
         val hits = RULES.filter { tool in it.tools && runCatching { it.matches(t, projectDir) }.getOrDefault(false) }
@@ -121,12 +121,12 @@ object Guard {
     fun decisions(): List<Decision> = synchronized(log) { log.toList() }
 
     fun whitelist(target: String) {
-        val s = ClaudeFaSettings.get()
+        val s = GapGptSettings.get()
         if (target.isNotBlank() && target !in s.guardWhitelist) s.guardWhitelist = s.guardWhitelist + target
     }
 
     fun setRuleEnabled(id: String, enabled: Boolean) {
-        val s = ClaudeFaSettings.get()
+        val s = GapGptSettings.get()
         s.guardDisabledRules = if (enabled) s.guardDisabledRules - id else (s.guardDisabledRules + id).distinct()
     }
 }

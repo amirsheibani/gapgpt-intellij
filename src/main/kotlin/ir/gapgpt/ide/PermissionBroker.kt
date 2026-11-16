@@ -1,12 +1,12 @@
-package ir.claudefa.ide
+package ir.gapgpt.ide
 
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
-import ir.claudefa.PluginLog
-import ir.claudefa.settings.ClaudeFaSettings
+import ir.gapgpt.PluginLog
+import ir.gapgpt.settings.GapGptSettings
 import java.util.UUID
 import java.util.concurrent.CancellationException
 import java.util.concurrent.CompletableFuture
@@ -88,7 +88,7 @@ class PermissionBroker(private val project: Project) {
                 addProperty("removed", preview.stats.second)
             }
         })
-        if (preview != null && ClaudeFaSettings.get().autoOpenDiff) openDiff(id)
+        if (preview != null && GapGptSettings.get().autoOpenDiff) openDiff(id)
 
         val decision = try {
             p.future.get()

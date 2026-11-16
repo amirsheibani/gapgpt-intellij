@@ -1,4 +1,4 @@
-# Graph Report - claude-fa-intellij  (2026-11-16)
+# Graph Report - gapgpt-intellij  (2026-11-16)
 
 ## Corpus Check
 - 26 files · ~25,068 words
@@ -29,7 +29,7 @@
 - PermissionBroker
 - IdeTools.kt
 - CLAUDE.md
-- ClaudeFaSettings
+- GapGptSettings
 
 ## God Nodes (most connected - your core abstractions)
 1. `ChatPanel` - 40 edges
@@ -60,7 +60,7 @@
 
 ## Hyperedges (group relationships)
 - **Chat webview UI regions** — src_main_resources_webview_chat_topbar, src_main_resources_webview_chat_messages, src_main_resources_webview_chat_status, src_main_resources_webview_chat_composer [EXTRACTED 1.00]
-- **CLI runner -> JCEF ChatPanel -> chat.html webview pipeline** — src_main_kotlin_ir_claudefa_cli_claudeclirunner, readme_chatpanel, src_main_kotlin_ir_claudefa_ui_chattoolwindowfactory, src_main_resources_webview_chat_chat_html [INFERRED 0.85]
+- **CLI runner -> JCEF ChatPanel -> chat.html webview pipeline** — src_main_kotlin_ir_gapgpt_cli_claudeclirunner, readme_chatpanel, src_main_kotlin_ir_gapgpt_ui_chattoolwindowfactory, src_main_resources_webview_chat_chat_html [INFERRED 0.85]
 - **Persian text rendering support** — readme_rtl_bidi_rendering, readme_vazirmatn_font, readme_jcef_html_panel, src_main_resources_webview_vazirmatn_ofl_sil_open_font_license [INFERRED 0.85]
 
 ## Communities (28 total, 20 thin omitted)
@@ -93,9 +93,9 @@ Nodes (5): SelectionTracker, CaretListener, FileEditorManagerListener, Selection
 Cohesion: 0.13
 Nodes (6): Allow, Decision, Deny, Pending, PermissionBroker, Ui
 
-### Community 25 - "ClaudeFaSettings"
+### Community 25 - "GapGptSettings"
 Cohesion: 0.11
-Nodes (8): Action, BLOCK, WARN, Decision, Guard, Rule, ClaudeFaSettings, State
+Nodes (8): Action, BLOCK, WARN, Decision, Guard, Rule, GapGptSettings, State
 
 ## Knowledge Gaps
 - **8 isolated node(s):** `BLOCK`, `WARN`, `Composer (RTL textarea, Send/Stop buttons)`, `Code Block Copy / Insert-into-Editor Buttons`, `Future Ideas (permission-prompt-tool MCP, IDE diff viewer, session history, auto-send IDE problems)` (+3 more)
@@ -111,7 +111,7 @@ _Questions this graph is uniquely positioned to answer:_
   _8 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `ChatPanel` be split into smaller, more focused modules?**
   _Cohesion score 0.07103825136612021 - nodes in this community are weakly interconnected._
-- **Why does `PluginLog` connect `ChatPanel` to `Plugin Concepts & Docs`, `ChatPanel.kt`, `DependencyScanner.kt`, `PermissionBroker`, `ClaudeFaSettings`?**
+- **Why does `PluginLog` connect `ChatPanel` to `Plugin Concepts & Docs`, `ChatPanel.kt`, `DependencyScanner.kt`, `PermissionBroker`, `GapGptSettings`?**
   _High betweenness centrality (0.036) - this node is a cross-community bridge._
 - **Should `Webview Chat Renderer (JS)` be split into smaller, more focused modules?**
   _Cohesion score 0.054061624649859946 - nodes in this community are weakly interconnected._

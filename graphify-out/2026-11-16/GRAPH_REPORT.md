@@ -1,4 +1,4 @@
-# Graph Report - claude-fa-intellij  (2026-11-16)
+# Graph Report - gapgpt-intellij  (2026-11-16)
 
 ## Corpus Check
 - 26 files · ~24,322 words
@@ -59,7 +59,7 @@
 
 ## Hyperedges (group relationships)
 - **Chat webview UI regions** — src_main_resources_webview_chat_topbar, src_main_resources_webview_chat_messages, src_main_resources_webview_chat_status, src_main_resources_webview_chat_composer [EXTRACTED 1.00]
-- **CLI runner -> JCEF ChatPanel -> chat.html webview pipeline** — src_main_kotlin_ir_claudefa_cli_claudeclirunner, readme_chatpanel, src_main_kotlin_ir_claudefa_ui_chattoolwindowfactory, src_main_resources_webview_chat_chat_html [INFERRED 0.85]
+- **CLI runner -> JCEF ChatPanel -> chat.html webview pipeline** — src_main_kotlin_ir_gapgpt_cli_claudeclirunner, readme_chatpanel, src_main_kotlin_ir_gapgpt_ui_chattoolwindowfactory, src_main_resources_webview_chat_chat_html [INFERRED 0.85]
 - **Persian text rendering support** — readme_rtl_bidi_rendering, readme_vazirmatn_font, readme_jcef_html_panel, src_main_resources_webview_vazirmatn_ofl_sil_open_font_license [INFERRED 0.85]
 
 ## Communities (27 total, 20 thin omitted)
@@ -78,7 +78,7 @@ Nodes (24): ChatPanel.kt (JCEF browser + JS-Kotlin bridge), Claude Code CLI (@an
 
 ### Community 4 - "ChatPanel.kt"
 Cohesion: 0.05
-Nodes (6): ClaudeConfig, GitInfo, ClaudeFaSettings, State, Command, SlashCommands
+Nodes (6): ClaudeConfig, GitInfo, GapGptSettings, State, Command, SlashCommands
 
 ### Community 5 - "SelectionActions.kt"
 Cohesion: 0.11
