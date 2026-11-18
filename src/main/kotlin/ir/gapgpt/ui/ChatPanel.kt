@@ -32,6 +32,7 @@ import com.intellij.ui.JBColor
 import com.intellij.ui.jcef.JBCefBrowser
 import com.intellij.ui.jcef.JBCefBrowserBase
 import com.intellij.ui.jcef.JBCefJSQuery
+import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.ui.UIUtil
 import ir.gapgpt.PluginLog
 import ir.gapgpt.api.ChatBackend
@@ -54,11 +55,16 @@ import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
 import org.cef.handler.CefLoadHandlerAdapter
 import java.awt.Color
+import java.awt.event.ComponentAdapter
+import java.awt.event.ComponentEvent
 import java.awt.datatransfer.StringSelection
 import java.io.File
 import java.util.Base64
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import javax.swing.JComponent
 
 /**
@@ -68,11 +74,16 @@ import javax.swing.JComponent
 class ChatPanel(private val project: Project) : Disposable, PermissionBroker.Ui {
 
     private val gson = Gson()
-    private val browser: JBCefBrowser = JBCefBrowser.createBuilder().setOffScreenRendering(false).build()
+    // The rendering mode is left to the platform, the way the IDE's own JCEF tool windows do it.
+    // Requesting a windowed browser is ignored outright by out-of-process JCEF, and the size is
+    // kept in step explicitly by [syncBrowserSize] instead.
+    private val browser: JBCefBrowser = JBCefBrowser.createBuilder().build()
     private val jsQuery: JBCefJSQuery = JBCefJSQuery.create(browser as JBCefBrowserBase)
 
     @Volatile
     private var pageReady = false
+    private val initialised = AtomicBoolean(false)
+    private val readyPings = AtomicInteger()
     private val pending = ConcurrentLinkedQueue<String>()
     private val lock = Any()
 
@@ -100,27 +111,13 @@ class ChatPanel(private val project: Project) : Disposable, PermissionBroker.Ui 
             null
         }
 
+        // Backup trigger only — the page itself reports "ready" (see handleFromJs). Do NOT filter on
+        // frame.isMain(): with out-of-process JCEF ("remote_*" builds, the default since 2025.2) the
+        // CefFrame is a stub whose isMain() reads a cached flag and answers false when the server did
+        // not send it, which would silently drop every load event and leave the panel dead.
         browser.jbCefClient.addLoadHandler(object : CefLoadHandlerAdapter() {
-            override fun onLoadEnd(cefBrowser: CefBrowser, frame: CefFrame, httpStatusCode: Int) {
-                if (!frame.isMain) return
-                cefBrowser.executeJavaScript(
-                    "window.__toIde = function(m){ ${jsQuery.inject("m")} };",
-                    cefBrowser.url, 0,
-                )
-                synchronized(lock) {
-                    pageReady = true
-                    while (true) {
-                        val js = pending.poll() ?: break
-                        cefBrowser.executeJavaScript(js, cefBrowser.url, 0)
-                    }
-                }
-                sendInit()
-                pooled { sendAccount() }
-                // /usage reports claude.ai subscription limits; only meaningful for the Claude Code engine.
-                pooled { if (!isGapGpt()) CliInfo.usage(project.basePath)?.let { post("usage", it) } }
-                pooled { sendGapGptModels(false) }
-                pooled { sendGapGptStatus(null, false) }
-            }
+            override fun onLoadEnd(cefBrowser: CefBrowser, frame: CefFrame, httpStatusCode: Int) =
+                onPageLive("onLoadEnd")
         }, browser.cefBrowser)
 
         ApplicationManager.getApplication().messageBus.connect(this)
@@ -130,7 +127,54 @@ class ChatPanel(private val project: Project) : Disposable, PermissionBroker.Ui 
         tracker.addListener(this) { snap -> post("context", contextJson(snap)) }
         PluginLog.addListener(logListener)
 
+        // JCEF does not reliably follow the Swing component inside a tool window: the page keeps
+        // the size the browser was built with, so widening the panel leaves the UI laid out in a
+        // narrow column that ignores every resize. Pushing the component's size into CEF directly
+        // is what actually moves it.
+        browser.component.addComponentListener(object : ComponentAdapter() {
+            override fun componentResized(e: ComponentEvent) = syncBrowserSize()
+            override fun componentShown(e: ComponentEvent) = syncBrowserSize()
+        })
+
         browser.loadHTML(buildHtml())
+
+        // Last resort: if neither the page nor the load handler reported in, go ahead anyway rather
+        // than leave a panel that renders but never receives anything.
+        AppExecutorUtil.getAppScheduledExecutorService().schedule(
+            { if (!pageReady && !Disposer.isDisposed(this)) onPageLive("timeout") }, 15, TimeUnit.SECONDS,
+        )
+    }
+
+    /**
+     * The page can receive JavaScript: flush what was queued and load it with state. Called from the
+     * page's own "ready" message, from [CefLoadHandlerAdapter.onLoadEnd] and from a timeout, whichever
+     * arrives first; the expensive part runs once.
+     */
+    private fun onPageLive(source: String) {
+        synchronized(lock) {
+            pageReady = true
+            while (true) {
+                val js = pending.poll() ?: break
+                exec(js)
+            }
+        }
+        syncBrowserSize()
+        if (!initialised.compareAndSet(false, true)) return
+        PluginLog.info("ui", "chat page ready ($source)")
+        sendInit()
+        pooled { sendAccount() }
+        // /usage reports claude.ai subscription limits; only meaningful for the Claude Code engine.
+        pooled { if (!isGapGpt()) CliInfo.usage(project.basePath)?.let { post("usage", it) } }
+        pooled { sendGapGptModels(false) }
+        pooled { sendGapGptStatus(null, false) }
+    }
+
+    /** Tells CEF how big the page should be, since the Swing component's own resize does not. */
+    private fun syncBrowserSize() {
+        val c = browser.component
+        if (c.width <= 0 || c.height <= 0) return
+        runCatching { browser.cefBrowser.wasResized(c.width, c.height) }
+            .onFailure { PluginLog.warn("ui", "wasResized failed: ${it.message}") }
     }
 
     private fun isGapGpt() = GapGptSettings.get().backend == GapGptSettings.BACKEND_GAPGPT
@@ -227,6 +271,21 @@ class ChatPanel(private val project: Project) : Disposable, PermissionBroker.Ui 
         fun str(k: String) = msg.get(k)?.takeIf { it.isJsonPrimitive }?.asString.orEmpty()
 
         when (msg.get("type")?.asString) {
+            // The page keeps re-sending "ready" until it has applied an "init". A repeat therefore
+            // means the IDE -> page direction is not landing, which is worth saying out loud.
+            "ready" -> {
+                val n = readyPings.incrementAndGet()
+                if (n > 1) PluginLog.warn("bridge", "page re-sent ready (#$n): IDE messages are not reaching it")
+                onPageLive("page")
+            }
+            "initApplied" -> PluginLog.info(
+                "ui",
+                "page applied init — bridge works both ways; viewport ${str("viewport")} " +
+                    "(component ${browser.component.width}x${browser.component.height})",
+            )
+            // Logged on every resize: if this never changes while the tool window is dragged
+            // wider, the browser surface is not following the Swing component.
+            "viewport" -> PluginLog.info("ui", "page viewport now ${str("viewport")} (component ${browser.component.width}x${browser.component.height})")
             "send" -> {
                 val text = str("text")
                 if (text.isBlank()) return
@@ -647,7 +706,21 @@ class ChatPanel(private val project: Project) : Disposable, PermissionBroker.Ui 
                 return
             }
         }
-        browser.cefBrowser.executeJavaScript(js, browser.cefBrowser.url, 0)
+        exec(js)
+    }
+
+    /**
+     * Runs [js] in the page. The script URL argument is deliberately the empty string rather than
+     * `cefBrowser.url`: CEF only uses it to label stack traces, while with out-of-process JCEF
+     * ("remote_*" builds, the default since 2025.2) `getURL()` reads a cached field on a stub that
+     * can still be null or stale right after `loadHTML`, and passing that drops the script.
+     */
+    private fun exec(js: String) {
+        try {
+            browser.cefBrowser.executeJavaScript(js, "", 0)
+        } catch (e: Exception) {
+            PluginLog.warn("bridge", "executeJavaScript failed: ${e.message}")
+        }
     }
 
     private fun notify(text: String, type: NotificationType) {
@@ -664,6 +737,7 @@ class ChatPanel(private val project: Project) : Disposable, PermissionBroker.Ui 
         val js = String(res("i18n.js"), Charsets.UTF_8) + "\n" + String(res("chat.js"), Charsets.UTF_8)
         val font = Base64.getEncoder().encodeToString(res("Vazirmatn.woff2"))
         return html
+            .replace("/*__BRIDGE__*/", "window.__toIde = function(m){ ${jsQuery.inject("m")} };")
             .replace("/*__CSS__*/", css.replace("__FONT_BASE64__", font))
             .replace("/*__JS__*/", js)
     }

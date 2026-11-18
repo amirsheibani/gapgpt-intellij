@@ -7,6 +7,11 @@
   <style>
 /*__CSS__*/
   </style>
+  <!-- JS -> IDE bridge. Injected into the page itself (not from CefLoadHandler.onLoadEnd), so it
+       exists as soon as the page script runs, in both in-process and out-of-process JCEF. -->
+  <script>
+/*__BRIDGE__*/
+  </script>
 </head>
 <body>
   <!-- chat tabs (one Claude process per tab) -->

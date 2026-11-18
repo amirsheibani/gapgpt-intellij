@@ -277,7 +277,14 @@
     if (!p || skipped(p)) return;
     const cur = n.nodeValue;
     if (n.__i18nOut !== undefined && cur === n.__i18nOut) {
-      if (lang === "fa") n.nodeValue = n.__i18nSrc;
+      // Restoring the Persian original must not write when nothing would change: in Blink even an
+      // identical assignment queues a characterData record, which brings this function back in
+      // through the observer, writes again, and spins the render process at 100% CPU forever —
+      // the panel then paints once and looks frozen. The remembered source can also be missing
+      // again once the app has rewritten the node itself.
+      if (lang === "fa" && n.__i18nSrc !== undefined && n.nodeValue !== n.__i18nSrc) {
+        n.nodeValue = n.__i18nSrc;
+      }
       return;
     }
     if (n.__i18nSrc !== undefined && cur === n.__i18nSrc && lang === "fa") return;

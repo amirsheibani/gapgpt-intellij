@@ -6,6 +6,7 @@
   const inputEl = $("input");
 
   const G = {
+    inited: false, // set once the IDE's "init" message has been applied
     sendOnEnter: true,
     projectPath: "",
     permissionMode: "default",
@@ -1888,6 +1889,7 @@
       const c = p && p.chat ? G.chats[p.chat] : null;
       switch (kind) {
         case "init": {
+          G.inited = true;
           const r = document.documentElement.style;
           if (p.bg) r.setProperty("--bg", p.bg);
           if (p.fg) r.setProperty("--fg", p.fg);
@@ -1909,6 +1911,9 @@
           document.body.classList.toggle("light", !p.dark);
           renderInfo();
           renderCtx();
+          // Tells the IDE the push direction works; it logs this, so a missing line pinpoints
+          // a one-way bridge rather than leaving a silently empty panel to guess about.
+          toIde({ type: "initApplied", viewport: viewportSize() });
           break;
         }
         case "context":
@@ -2365,4 +2370,33 @@
 
   newChat();
   inputEl.focus();
+
+  // Tell the IDE the page is live. This — not CefLoadHandler.onLoadEnd — is what makes the IDE
+  // flush its queued messages and send "init"; onLoadEnd is only a backup trigger, because in
+  // out-of-process JCEF it is easy to miss. Repeat it a few times in case the IDE side attaches
+  // its handler slightly later; the IDE treats "ready" as idempotent.
+  // Reports how large the page believes it is. If this stays at the panel's original width while
+  // the tool window is resized, the browser surface is not following the Swing component — the
+  // symptom being that the UI looks frozen in a narrow column.
+  function viewportSize() {
+    return window.innerWidth + "x" + window.innerHeight + " @" + (window.devicePixelRatio || 1) + "x";
+  }
+  let lastViewport = "";
+  // Polled rather than driven by the "resize" event: when CEF renders offscreen the page is
+  // resized behind the event's back, so the listener alone never fires. Only a real change is
+  // reported, so this stays quiet while the panel is left alone.
+  setInterval(() => {
+    const v = viewportSize();
+    if (v === lastViewport) return;
+    const first = lastViewport === "";
+    lastViewport = v;
+    if (!first) toIde({ type: "viewport", viewport: v });
+  }, 1000);
+
+  toIde({ type: "ready" });
+  let readyTries = 0;
+  const readyPing = setInterval(() => {
+    if (G.inited || ++readyTries > 10) return clearInterval(readyPing);
+    toIde({ type: "ready" });
+  }, 500);
 })();
