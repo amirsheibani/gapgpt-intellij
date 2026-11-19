@@ -35,7 +35,7 @@
 ```bash
 JAVA_HOME="/Applications/IntelliJ IDEA CE.app/Contents/jbr/Contents/Home" ./gradlew buildPlugin
 ```
-فایل `build/distributions/gapgpt-intellij-0.1.0.zip` ساخته می‌شود. در IDE به **Settings › Plugins › ⚙ › Install Plugin from Disk…** بروید و همان zip را انتخاب کنید.
+فایل `build/distributions/gapgpt-intellij-0.2.0.zip` ساخته می‌شود. در IDE به **Settings › Plugins › ⚙ › Install Plugin from Disk…** بروید و همان zip را انتخاب کنید.
 
 برای اجرای یک IDE آزمایشی همراه با پلاگین:
 ```bash

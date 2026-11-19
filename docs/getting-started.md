@@ -85,7 +85,7 @@ curl -s https://api.gapgpt.app/v1/models \
 
 ```bash
 JAVA_HOME="/Applications/IntelliJ IDEA CE.app/Contents/jbr/Contents/Home" ./gradlew buildPlugin
-# → build/distributions/gapgpt-intellij-0.1.0.zip
+# → build/distributions/gapgpt-intellij-0.2.0.zip
 
 ./gradlew runIde   # a sandbox IDE with the plugin, for trying it out
 ```
