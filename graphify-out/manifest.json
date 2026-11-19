@@ -18,63 +18,57 @@
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/actions/SelectionActions.kt": {
-    "mtime": 1794847976.6949499,
-    "seen": 1794866644.377395,
-    "ast_hash": "7263dc20facf55042b9ac56df36f38b2",
-    "semantic_hash": ""
-  },
-  "src/main/kotlin/ir/gapgpt/cli/ClaudeCliRunner.kt": {
-    "mtime": 1794847976.691863,
-    "seen": 1794866644.3774028,
-    "ast_hash": "348a7f9c0f7b70823eaf788e49a9bab6",
+    "mtime": 1795086029.7496047,
+    "seen": 1795086240.110635,
+    "ast_hash": "1f95549f18063d91afd56bc746870819",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/settings/GapGptConfigurable.kt": {
-    "mtime": 1794848046.9888842,
-    "seen": 1794866644.377418,
-    "ast_hash": "cf58fb5dd3e14054920247d2740cd58c",
+    "mtime": 1795087517.2923474,
+    "seen": 1795087523.62764,
+    "ast_hash": "ba0a7d82d5f4966943e9a9f80c3ff491",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/settings/GapGptSettings.kt": {
-    "mtime": 1794847935.893676,
-    "seen": 1794866644.377419,
-    "ast_hash": "5e4d9a2a90c896eb96a0803a24902777",
+    "mtime": 1795087517.292803,
+    "seen": 1795087523.6276412,
+    "ast_hash": "83a1075115945267be5b42636e6e4b2e",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/ui/ChatPanel.kt": {
-    "mtime": 1794889921.4925025,
-    "seen": 1794889985.729472,
-    "ast_hash": "390207af38beeffbae2ce44910941037",
+    "mtime": 1795087517.2956834,
+    "seen": 1795087523.6276422,
+    "ast_hash": "426b190486fecc6747d38f1c818a6262",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/ui/ChatToolWindowFactory.kt": {
-    "mtime": 1794847976.6968782,
-    "seen": 1794866644.377423,
-    "ast_hash": "0284da0e0255ce0d0d169284ffc6c305",
+    "mtime": 1795086029.6769404,
+    "seen": 1795086240.110656,
+    "ast_hash": "6f2dcbb3dec9e723b23d3f65306802a5",
     "semantic_hash": ""
   },
   "src/main/resources/webview/chat.js": {
-    "mtime": 1794889930.8688843,
-    "seen": 1794889985.7294772,
-    "ast_hash": "c7cdcad29fc436265ee87009a627ac62",
+    "mtime": 1795087517.3025959,
+    "seen": 1795087523.627646,
+    "ast_hash": "4d3638a5898f201b46a2b00b0d799083",
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1794840546.2840059,
-    "seen": 1794866644.377429,
-    "ast_hash": "f75c554db98706c65d73f949bfe1a239",
+    "mtime": 1795086185.0555596,
+    "seen": 1795086240.1106791,
+    "ast_hash": "7f839079abf559e071737e316c3bf615",
     "semantic_hash": ""
   },
   "src/main/resources/webview/Vazirmatn-OFL.txt": {
-    "mtime": 1794838959.5848691,
-    "seen": 1794839345.082376,
+    "mtime": 1795086029.5306323,
+    "seen": 1795086240.110684,
     "ast_hash": "88985b4355a8a44627dde041f10aba75",
     "semantic_hash": "88985b4355a8a44627dde041f10aba75"
   },
   "src/main/resources/webview/chat.html": {
-    "mtime": 1794866435.8856976,
-    "seen": 1794866644.377432,
-    "ast_hash": "8983c69e256aff8c822814a7ecad45bb",
+    "mtime": 1795087517.299508,
+    "seen": 1795087523.627676,
+    "ast_hash": "52578b3e7e0e97d57fc21afb9f97d74b",
     "semantic_hash": ""
   },
   ".claude/settings.json": {
@@ -83,40 +77,16 @@
     "ast_hash": "0b43fbe253e4f105715644c14d401af0",
     "semantic_hash": ""
   },
-  "src/main/kotlin/ir/gapgpt/ide/DiffPreview.kt": {
-    "mtime": 1794847976.6956613,
-    "seen": 1794866644.377408,
-    "ast_hash": "4135913afd18b8cd4f407a607984bf2a",
-    "semantic_hash": ""
-  },
-  "src/main/kotlin/ir/gapgpt/ide/IdeMcpServer.kt": {
-    "mtime": 1794838959.5832894,
-    "seen": 1794839345.0823622,
-    "ast_hash": "8e58866020019c461d325042a46c9787",
-    "semantic_hash": ""
-  },
-  "src/main/kotlin/ir/gapgpt/ide/IdeTools.kt": {
-    "mtime": 1794838959.5833921,
-    "seen": 1794839345.082363,
-    "ast_hash": "a76f07026ed9a483f397225f1632050f",
-    "semantic_hash": ""
-  },
-  "src/main/kotlin/ir/gapgpt/ide/PermissionBroker.kt": {
-    "mtime": 1794838959.5834975,
-    "seen": 1794839345.0823638,
-    "ast_hash": "4d81395e11c1c7552f40d4e6ce72e01d",
-    "semantic_hash": ""
-  },
   "src/main/kotlin/ir/gapgpt/ide/ProjectFileSearch.kt": {
-    "mtime": 1794838959.5835829,
-    "seen": 1794839345.082365,
+    "mtime": 1795086029.633392,
+    "seen": 1795086240.1106482,
     "ast_hash": "443eed6017f73e63bf5f80012abb9656",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/ide/SelectionTracker.kt": {
-    "mtime": 1794838959.5836775,
-    "seen": 1794839345.082366,
-    "ast_hash": "7ace823460bda6ce5b7ac461567766bb",
+    "mtime": 1795086029.65684,
+    "seen": 1795086240.110649,
+    "ast_hash": "ff29d452d54fbce7e21b6cf92ab59016",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
@@ -132,99 +102,39 @@
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/ui/SlashCommands.kt": {
-    "mtime": 1794838959.5842526,
-    "seen": 1794839345.0823722,
-    "ast_hash": "40ea68388d391b77c0127c19c6d0c031",
+    "mtime": 1795086184.320104,
+    "seen": 1795086240.110657,
+    "ast_hash": "b2843714141619839ea67aca5c5f9b5d",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/PluginLog.kt": {
-    "mtime": 1794838959.5821462,
-    "seen": 1794839345.0823538,
+    "mtime": 1795086029.6426005,
+    "seen": 1795086240.110633,
     "ast_hash": "134a791e81b342f0023f44d899e7664a",
     "semantic_hash": ""
   },
-  "src/main/kotlin/ir/gapgpt/cli/CliInfo.kt": {
-    "mtime": 1794839830.2539065,
-    "seen": 1794840039.4734,
-    "ast_hash": "5d0ac19730da6afb8a607e7739f68ad3",
-    "semantic_hash": ""
-  },
-  "src/main/kotlin/ir/gapgpt/ide/DependencyScanner.kt": {
-    "mtime": 1794838959.5828245,
-    "seen": 1794839345.082359,
-    "ast_hash": "a4295cd90f32af26ae8c9abec9a810d7",
-    "semantic_hash": ""
-  },
   "src/main/kotlin/ir/gapgpt/ide/GitInfo.kt": {
-    "mtime": 1794838959.58304,
-    "seen": 1794839345.08236,
-    "ast_hash": "644a568f1ab7571a27fe7d936b985dcc",
-    "semantic_hash": ""
-  },
-  "src/main/kotlin/ir/gapgpt/ide/Guard.kt": {
-    "mtime": 1794838959.583155,
-    "seen": 1794839345.082361,
-    "ast_hash": "200f33d37224ea46c051699494d5881e",
-    "semantic_hash": ""
-  },
-  "src/main/kotlin/ir/gapgpt/cli/ClaudeConfig.kt": {
-    "mtime": 1794838959.582573,
-    "seen": 1794839345.082357,
-    "ast_hash": "11303fa18018aef5b3015cb51b4f1756",
-    "semantic_hash": ""
-  },
-  "src/main/kotlin/ir/gapgpt/settings/GapGptApi.kt": {
-    "mtime": 1794848021.262099,
-    "seen": 1794866644.3774168,
-    "ast_hash": "8d39e137b44dbc6abbdb45179dad79e8",
-    "semantic_hash": ""
-  },
-  "src/main/kotlin/ir/gapgpt/api/ChatBackend.kt": {
-    "mtime": 1794839859.7704096,
-    "seen": 1794840039.473394,
-    "ast_hash": "5805f13cee88087857861fc63d18dc53",
-    "semantic_hash": ""
-  },
-  "src/main/kotlin/ir/gapgpt/api/GapGptChatRunner.kt": {
-    "mtime": 1794847976.69284,
-    "seen": 1794866644.377398,
-    "ast_hash": "015e403e41933436f00ab9e518878f8b",
+    "mtime": 1795086029.6379392,
+    "seen": 1795086240.110646,
+    "ast_hash": "a72530cbf73bf4fc12226f20cd609f23",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/api/GapGptPricing.kt": {
-    "mtime": 1794846959.3770406,
-    "seen": 1794866644.377399,
-    "ast_hash": "1c5fa18422952529e25347b25e580f9b",
-    "semantic_hash": ""
-  },
-  "src/main/kotlin/ir/gapgpt/api/GapGptTools.kt": {
-    "mtime": 1794840432.7210863,
-    "seen": 1794866644.3774002,
-    "ast_hash": "51528eb489fad9ab16bc93526c681ae7",
+    "mtime": 1795086184.2767398,
+    "seen": 1795086240.110639,
+    "ast_hash": "6e86343da410a2ba40d040a62dfedea3",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/api/GapGptUsage.kt": {
-    "mtime": 1794846929.171298,
-    "seen": 1794866644.377402,
+    "mtime": 1795086184.2734234,
+    "seen": 1795086240.11064,
     "ast_hash": "691ad9f5f245f0b6b7337ddca328a409",
-    "semantic_hash": ""
-  },
-  "src/main/kotlin/ir/gapgpt/settings/I18n.kt": {
-    "mtime": 1794847895.7963393,
-    "seen": 1794866644.37742,
-    "ast_hash": "c81a74ee2a83d14bc4b54c97c16b93fa",
     "semantic_hash": ""
   },
   "src/main/resources/gapgpt/pricing.json": {
     "mtime": 1794846905.4587648,
     "seen": 1794866644.377425,
     "ast_hash": "00ba62e4c56279194fe4a1d5b55e0354",
-    "semantic_hash": ""
-  },
-  "src/main/resources/webview/i18n.js": {
-    "mtime": 1795003075.186598,
-    "seen": 1795003337.936856,
-    "ast_hash": "04a110dcb05c85af0d23e1bb6ae15663",
     "semantic_hash": ""
   },
   "src/main/resources/META-INF/pluginIcon_dark.svg": {
@@ -243,6 +153,246 @@
     "mtime": 1794847545.5818915,
     "seen": 1794866644.377436,
     "ast_hash": "10a12e08604839dd7484eb0e4f9eea23",
+    "semantic_hash": ""
+  },
+  "src/main/kotlin/ir/gapgpt/I18n.kt": {
+    "mtime": 1795086029.6289427,
+    "seen": 1795086240.110632,
+    "ast_hash": "527e73b98e238e38660aec441ba718df",
+    "semantic_hash": ""
+  },
+  "src/main/kotlin/ir/gapgpt/actions/ImportInstructionsAction.kt": {
+    "mtime": 1795086029.723452,
+    "seen": 1795086240.110634,
+    "ast_hash": "57d6a6d28455961248507eba5e284da1",
+    "semantic_hash": ""
+  },
+  "src/main/kotlin/ir/gapgpt/agent/AgentTools.kt": {
+    "mtime": 1795087517.2891293,
+    "seen": 1795087523.6276212,
+    "ast_hash": "53c83b3bb1e2b1fecf137c3ca4df7155",
+    "semantic_hash": ""
+  },
+  "src/main/kotlin/ir/gapgpt/agent/CodeTools.kt": {
+    "mtime": 1795086029.728708,
+    "seen": 1795086240.110637,
+    "ast_hash": "4c2084109c50b2fc7bae5ed341b83590",
+    "semantic_hash": ""
+  },
+  "src/main/kotlin/ir/gapgpt/api/GapGptClient.kt": {
+    "mtime": 1795086133.1349623,
+    "seen": 1795086240.1106381,
+    "ast_hash": "33d62c434ca2eabac76314d12c83394a",
+    "semantic_hash": ""
+  },
+  "src/main/kotlin/ir/gapgpt/chat/Conversation.kt": {
+    "mtime": 1795086029.7162545,
+    "seen": 1795086240.110641,
+    "ast_hash": "fdba19c88beb52b64d16a4c159fefe5e",
+    "semantic_hash": ""
+  },
+  "src/main/kotlin/ir/gapgpt/chat/Prompts.kt": {
+    "mtime": 1795087517.2902794,
+    "seen": 1795087523.627628,
+    "ast_hash": "2b7731dcdef3f51e6a32f5a42b4cf2a7",
+    "semantic_hash": ""
+  },
+  "src/main/kotlin/ir/gapgpt/chat/SessionStore.kt": {
+    "mtime": 1795086029.6861548,
+    "seen": 1795086240.110643,
+    "ast_hash": "da2b9dcc547d9ecc0b503eeb16d66da0",
+    "semantic_hash": ""
+  },
+  "src/main/kotlin/ir/gapgpt/context/InstructionsImporter.kt": {
+    "mtime": 1795086029.701272,
+    "seen": 1795086240.1106439,
+    "ast_hash": "d0e2ad0c84d1cdf8de1a26a1ba8c60ff",
+    "semantic_hash": ""
+  },
+  "src/main/kotlin/ir/gapgpt/context/ProjectInstructions.kt": {
+    "mtime": 1795086029.696162,
+    "seen": 1795086240.110645,
+    "ast_hash": "adff48ffec55a4cb8e919bab5771034b",
+    "semantic_hash": ""
+  },
+  "src/main/kotlin/ir/gapgpt/ide/GraphifySetup.kt": {
+    "mtime": 1795087517.2912107,
+    "seen": 1795087523.6276329,
+    "ast_hash": "1581af5e03a3fcbc80b37a0fdb3e6504",
+    "semantic_hash": ""
+  },
+  "src/main/kotlin/ir/gapgpt/mcp/McpClient.kt": {
+    "mtime": 1795086029.7101774,
+    "seen": 1795086240.11065,
+    "ast_hash": "3cf0c0e08a441a19740b8603236415a0",
+    "semantic_hash": ""
+  },
+  "src/main/kotlin/ir/gapgpt/mcp/McpConfig.kt": {
+    "mtime": 1795086029.7393708,
+    "seen": 1795086240.11065,
+    "ast_hash": "6c4723baa889bc98a6e7410cc94b51fb",
+    "semantic_hash": ""
+  },
+  "src/main/kotlin/ir/gapgpt/mcp/McpManager.kt": {
+    "mtime": 1795086029.7549784,
+    "seen": 1795086240.1106508,
+    "ast_hash": "6f7c634212aefb2a843ed168731582cc",
+    "semantic_hash": ""
+  },
+  "src/main/kotlin/ir/gapgpt/settings/ApiKeyStore.kt": {
+    "mtime": 1795086133.1354008,
+    "seen": 1795086240.110652,
+    "ast_hash": "334fdae8e8517daff71556db2f475e0a",
+    "semantic_hash": ""
+  },
+  ".arvanai/rules/project-memory-2.md": {
+    "mtime": 1794838959.5657704,
+    "seen": 1795086240.11066,
+    "ast_hash": "67d88e9d0760c3ba54c75dfd9551c1c5",
+    "semantic_hash": ""
+  },
+  ".claude/rules/graphify.md": {
+    "mtime": 1795086029.5602512,
+    "seen": 1795086240.110661,
+    "ast_hash": "f36539ecc9af68f33ebd72770ce4a19e",
+    "semantic_hash": ""
+  },
+  ".claude/rules/plugin-agent-workflow.md": {
+    "mtime": 1795086029.5598886,
+    "seen": 1795086240.110662,
+    "ast_hash": "a5ad2d3b6b96de3520ac2d3259d851ed",
+    "semantic_hash": ""
+  },
+  ".claude/rules/plugin-confirm-before-edit.md": {
+    "mtime": 1795086029.559379,
+    "seen": 1795086240.110663,
+    "ast_hash": "08e71ec7c6d2d6fb02c706ac9d8f3fa7",
+    "semantic_hash": ""
+  },
+  ".claude/rules/plugin-donts.md": {
+    "mtime": 1795086029.559031,
+    "seen": 1795086240.110664,
+    "ast_hash": "5662cfaf144102fe873e5ce0a99a9829",
+    "semantic_hash": ""
+  },
+  ".claude/rules/plugin-git.md": {
+    "mtime": 1795086029.5605946,
+    "seen": 1795086240.1106648,
+    "ast_hash": "f48cea68828611edf2a4e45e7fe19ed5",
+    "semantic_hash": ""
+  },
+  ".claude/skills/debug-hypotheses/SKILL.md": {
+    "mtime": 1795086029.561346,
+    "seen": 1795086240.110666,
+    "ast_hash": "89234ad00a74ad480e211004aa1b46d9",
+    "semantic_hash": ""
+  },
+  ".claude/skills/explore-feature/SKILL.md": {
+    "mtime": 1795086165.2566483,
+    "seen": 1795086240.110666,
+    "ast_hash": "0412ed64c37fbdb53e1f72c9edf8e7cc",
+    "semantic_hash": ""
+  },
+  ".claude/skills/implement/SKILL.md": {
+    "mtime": 1795086029.5617785,
+    "seen": 1795086240.110667,
+    "ast_hash": "cb228c49f4efae854e6c4df37312391c",
+    "semantic_hash": ""
+  },
+  ".claude/skills/scaffold-feature/SKILL.md": {
+    "mtime": 1795086029.7942107,
+    "seen": 1795086240.110668,
+    "ast_hash": "0a7ac30ff33ecc839efecafa92fdeb4d",
+    "semantic_hash": ""
+  },
+  ".claude/skills/senior-review/SKILL.md": {
+    "mtime": 1795086029.5622063,
+    "seen": 1795086240.1106691,
+    "ast_hash": "26278dd93da51eb7b4266579eaaed738",
+    "semantic_hash": ""
+  },
+  ".gapgpt/rules/plugin-agent-workflow.md": {
+    "mtime": 1795086029.7988875,
+    "seen": 1795086240.11067,
+    "ast_hash": "38a5f6be23973d2518fcb7da5f63041d",
+    "semantic_hash": ""
+  },
+  ".gapgpt/rules/plugin-confirm-before-edit.md": {
+    "mtime": 1795086029.5671384,
+    "seen": 1795086240.110671,
+    "ast_hash": "e35cab303521c68109309ec04dd3c554",
+    "semantic_hash": ""
+  },
+  ".gapgpt/rules/plugin-donts.md": {
+    "mtime": 1795086029.5665748,
+    "seen": 1795086240.110671,
+    "ast_hash": "c8c887fdfcd02f85090decc62e3e5b00",
+    "semantic_hash": ""
+  },
+  ".gapgpt/rules/plugin-git.md": {
+    "mtime": 1795086029.568022,
+    "seen": 1795086240.1106718,
+    "ast_hash": "cb6dffdce93a7d7337d5a5244aca3a25",
+    "semantic_hash": ""
+  },
+  ".gapgpt/skills/debug-hypotheses/SKILL.md": {
+    "mtime": 1795086029.5688117,
+    "seen": 1795086240.110673,
+    "ast_hash": "a5a3aa3af661efb5603dc4ca607545b5",
+    "semantic_hash": ""
+  },
+  ".gapgpt/skills/explore-feature/SKILL.md": {
+    "mtime": 1795086165.256943,
+    "seen": 1795086240.110674,
+    "ast_hash": "4ff1870173f28504d9ea15f44913a0e5",
+    "semantic_hash": ""
+  },
+  ".gapgpt/skills/implement/SKILL.md": {
+    "mtime": 1795086029.5692546,
+    "seen": 1795086240.1106749,
+    "ast_hash": "610d748acac569560bcbad61f7488254",
+    "semantic_hash": ""
+  },
+  ".gapgpt/skills/scaffold-feature/SKILL.md": {
+    "mtime": 1795086029.803754,
+    "seen": 1795086240.110676,
+    "ast_hash": "07ee573d7becf2fb97b1172c93ddca46",
+    "semantic_hash": ""
+  },
+  ".gapgpt/skills/senior-review/SKILL.md": {
+    "mtime": 1795086029.5696862,
+    "seen": 1795086240.110677,
+    "ast_hash": "26278dd93da51eb7b4266579eaaed738",
+    "semantic_hash": ""
+  },
+  "docs/README.md": {
+    "mtime": 1795086165.2558672,
+    "seen": 1795086240.11068,
+    "ast_hash": "20177b7ade80a16b5297cf8aac9cd87a",
+    "semantic_hash": ""
+  },
+  "docs/chat-agent.md": {
+    "mtime": 1795087517.287471,
+    "seen": 1795087523.627671,
+    "ast_hash": "c5c825f473caf5d39d448cdd824f0ae7",
+    "semantic_hash": ""
+  },
+  "docs/gapgpt-api.md": {
+    "mtime": 1795086148.9934387,
+    "seen": 1795086240.110682,
+    "ast_hash": "c2ca69202a9e53bda13384863657eba5",
+    "semantic_hash": ""
+  },
+  "docs/getting-started.md": {
+    "mtime": 1795086165.2554886,
+    "seen": 1795086240.110682,
+    "ast_hash": "a211d6776a2782d03b9338298b926098",
+    "semantic_hash": ""
+  },
+  "docs/instructions-import.md": {
+    "mtime": 1795086165.256415,
+    "seen": 1795086240.110683,
+    "ast_hash": "552db0e1f085bf94a4dad64ddbfdc0fd",
     "semantic_hash": ""
   }
 }

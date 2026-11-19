@@ -1,6 +1,7 @@
 package ir.gapgpt.ide
 
 import com.google.gson.JsonObject
+import ir.gapgpt.I18n
 import java.io.File
 import java.util.concurrent.TimeUnit
 
@@ -20,9 +21,9 @@ object GitInfo {
     }
 
     fun overview(projectDir: String?): JsonObject = JsonObject().apply {
-        val dir = projectDir ?: return@apply addProperty("error", "پروژه پوشه ندارد.")
+        val dir = projectDir ?: return@apply addProperty("error", I18n.tr("The project has no directory.", "پروژه پوشه ندارد."))
         val root = git(dir, "rev-parse", "--show-toplevel")
-            ?: return@apply addProperty("error", "این پروژه یک مخزن Git نیست (یا git نصب نیست).")
+            ?: return@apply addProperty("error", I18n.tr("This project is not a Git repository (or git is not installed).", "این پروژه یک مخزن Git نیست (یا git نصب نیست)."))
         addProperty("root", root)
         addProperty("branch", git(dir, "rev-parse", "--abbrev-ref", "HEAD") ?: "")
         addProperty("head", git(dir, "rev-parse", "HEAD") ?: "")

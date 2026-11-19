@@ -1,48 +1,28 @@
 package ir.gapgpt.ui
 
-import java.io.File
+import ir.gapgpt.I18n
+import ir.gapgpt.context.ProjectInstructions
 
 /** Slash commands offered when the user types `/` in the chat input. */
 object SlashCommands {
 
     data class Command(val name: String, val description: String, val source: String)
 
-    private val BUILT_IN = listOf(
-        Command("clear", "شروع گفتگوی جدید", "builtin"),
-        Command("compact", "خلاصه‌سازی گفتگو برای آزاد کردن context", "builtin"),
-        Command("review", "بررسی تغییرات فعلی کد", "builtin"),
-        Command("init", "ساخت فایل CLAUDE.md برای این پروژه", "builtin"),
-    )
+    private val BUILT_IN
+        get() = listOf(
+            Command("clear", I18n.tr("Start a new conversation", "شروع گفتگوی جدید"), "builtin"),
+            Command("new", I18n.tr("Start a new conversation", "شروع گفتگوی جدید"), "builtin"),
+            Command("resume", I18n.tr("Resume a saved conversation", "ادامهٔ یک گفتگوی ذخیره‌شده"), "builtin"),
+            Command("mcp", I18n.tr("Show MCP servers and their tools (/mcp reload restarts them)", "نمایش سرورهای MCP و ابزارهایشان (/mcp reload آن‌ها را دوباره اجرا می‌کند)"), "builtin"),
+            Command("usage", I18n.tr("Show account credit, model price and local usage (/usage reset clears the counters)", "نمایش اعتبار حساب، قیمت مدل و مصرف محلی (/usage reset شمارنده‌ها را صفر می‌کند)"), "builtin"),
+            Command("graphify", I18n.tr("Build the code graph, or answer with it: /graphify <question>", "ساخت گراف کد، یا پاسخ با آن: ‎/graphify <سؤال>"), "builtin"),
+            Command("compact", I18n.tr("Summarize the conversation to free context (optional: what to focus on)", "خلاصه کردن گفتگو برای آزاد کردن context (اختیاری: روی چه چیزی تمرکز شود)"), "builtin"),
+        )
 
-    /** Built-ins plus custom commands from `.claude/commands` (project and user) and skills. */
+    /** Built-ins plus the skills found in `.gapgpt/` (project and user). Blocking file I/O: call off the EDT. */
     fun list(projectDir: String?): List<Command> {
         val out = ArrayList(BUILT_IN)
-        val home = System.getProperty("user.home")
-        val dirs = listOfNotNull(projectDir?.let { File(it, ".claude/commands") to "project" }, File(home, ".claude/commands") to "user")
-        for ((dir, source) in dirs) {
-            if (!dir.isDirectory) continue
-            dir.walkTopDown().maxDepth(3).filter { it.isFile && it.extension == "md" }.forEach { f ->
-                val name = f.relativeTo(dir).path.removeSuffix(".md").replace(File.separatorChar, ':')
-                out += Command(name, description(f), source)
-            }
-        }
-        val skillDirs = listOfNotNull(projectDir?.let { File(it, ".claude/skills") to "project" }, File(home, ".claude/skills") to "user")
-        for ((dir, source) in skillDirs) {
-            dir.listFiles()?.filter { File(it, "SKILL.md").isFile }?.forEach { d ->
-                out += Command(d.name, description(File(d, "SKILL.md")), source)
-            }
-        }
+        ProjectInstructions.skills(projectDir).forEach { out += Command(it.name, it.description, it.source) }
         return out.distinctBy { it.name }
-    }
-
-    /** `description:` from the front matter, else the first non-empty line. */
-    private fun description(f: File): String {
-        val lines = runCatching { f.useLines { it.take(40).toList() } }.getOrDefault(emptyList())
-        lines.firstOrNull { it.trimStart().startsWith("description:") }
-            ?.substringAfter("description:")?.trim()?.trim('"', '\'')
-            ?.let { return it.take(120) }
-        return lines.dropWhile { it.trim() == "---" || it.isBlank() }
-            .firstOrNull { it.isNotBlank() && !it.contains(":") || it.startsWith("#") }
-            ?.trim()?.trimStart('#')?.trim()?.take(120).orEmpty()
     }
 }

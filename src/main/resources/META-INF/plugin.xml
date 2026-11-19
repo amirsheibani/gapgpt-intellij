@@ -4,20 +4,20 @@
     <vendor>GapGPT</vendor>
 
     <description><![CDATA[
-    <p>Chat with <b>Claude Code</b> inside IntelliJ-based IDEs with full Persian (Farsi) / RTL support.</p>
+    <p>Chat with <b>GapGPT</b> models (GPT, Claude, Gemini, DeepSeek, Grok, Qwen and more) inside IntelliJ-based IDEs, in English or Persian (Farsi), with full RTL / bidi support.</p>
     <ul>
-      <li>Right-to-left chat panel with correct bidi rendering of mixed Persian/English text</li>
-      <li>Bundled Vazirmatn font</li>
+      <li>Talks directly to the GapGPT (OpenAI-compatible) API with your own API key (kept in the IDE's secure storage)</li>
+      <li>Cost of every reply and your GapGPT account balance, plus a <code>/usage</code> report per model</li>
+      <li>Streaming replies, multiple chats, and a configurable model</li>
+      <li>English / Persian UI (switch from the chat toolbar); write in either language and get the reply in the same one</li>
+      <li>Per-paragraph LTR/RTL detection, so mixed Persian/English text never breaks; bundled Vazirmatn font</li>
       <li>Code blocks stay left-to-right, with Copy and Insert-at-caret buttons</li>
-      <li>Review Claude's proposed edits in the IDE diff viewer and accept / reject (or tweak) them</li>
-      <li>Approve or deny commands and tools right in the chat</li>
-      <li>Current file and selection are shared with Claude automatically</li>
-      <li>IDE diagnostics (errors / warnings), open editors and selection are available to Claude as tools</li>
-      <li>@-mention project files with autocomplete; insert @File#L1-99 references from the editor</li>
-      <li>Send the editor selection to Claude, or ask Claude to explain it</li>
-      <li>Uses your locally installed Claude Code CLI (your own login / subscription)</li>
+      <li>Project rules and skills from the <code>.gapgpt/</code> folder; skills are available as slash commands</li>
+      <li>One-click import of existing rules and skills from other AI tools' folders into <code>.gapgpt/</code></li>
+      <li>Current file and selection are shared with the model automatically</li>
+      <li>@-mention project files with autocomplete; send or explain the editor selection</li>
     </ul>
-    <p dir="rtl">گفتگو با Claude Code داخل IDE با پشتیبانی کامل از زبان فارسی و راست‌به‌چپ.</p>
+    <p dir="rtl">گفتگو با همهٔ مدل‌های گپ‌جی‌پی‌تی (GPT، Claude، Gemini، DeepSeek، Grok، Qwen و…) داخل IDE، همراه با هزینهٔ هر پاسخ و اعتبار حساب، با پشتیبانی کامل از زبان فارسی و راست‌به‌چپ؛ قوانین و اسکیل‌های پروژه از پوشهٔ <code>.gapgpt/</code>.</p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
@@ -27,7 +27,7 @@
     <depends optional="true" config-file="gapgpt-jcef.xml">com.intellij.modules.jcef</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow id="GapGpt"
+        <toolWindow id="GapGPT"
                     anchor="right"
                     icon="/icons/gapgpt.svg"
                     factoryClass="ir.gapgpt.ui.ChatToolWindowFactory"/>
@@ -43,31 +43,37 @@
     </extensions>
 
     <actions>
-        <group id="GapGpt.EditorGroup" text="GapGPT" popup="true" icon="/icons/gapgpt.svg">
+        <group id="GapGPT.EditorGroup" text="GapGPT" popup="true" icon="/icons/gapgpt.svg">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
-            <action id="GapGpt.SendSelection"
+            <action id="GapGPT.SendSelection"
                     class="ir.gapgpt.actions.SendSelectionAction"
-                    text="Insert File Reference into Chat (@File#L1-99)"
+                    text="Insert File Reference in Chat (@File#L1-99)"
                     description="Insert a reference to the current file / selected lines into the GapGPT chat input">
                 <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
                 <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift K"/>
             </action>
-            <action id="GapGpt.Explain"
+            <action id="GapGPT.Explain"
                     class="ir.gapgpt.actions.ExplainSelectionAction"
                     text="Explain This Code"
-                    description="Ask the model to explain the selected code"/>
-            <action id="GapGpt.Review"
+                    description="Ask the assistant to explain the selected code"/>
+            <action id="GapGPT.Review"
                     class="ir.gapgpt.actions.ReviewSelectionAction"
                     text="Review and Suggest Improvements"
-                    description="Ask the model to review the selected code"/>
+                    description="Ask the assistant to review the selected code"/>
         </group>
-        <action id="GapGpt.Open"
+        <action id="GapGPT.Open"
                 class="ir.gapgpt.actions.OpenChatAction"
                 text="GapGPT: Open Chat"
                 icon="/icons/gapgpt.svg"
                 description="Open the GapGPT chat">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
-            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift L"/>
+            <!-- No default shortcut: Ctrl/Cmd+Alt+Shift+L is the IDE's own "Reformat File…". Users can assign one in Keymap. -->
+        </action>
+        <action id="GapGPT.ImportInstructions"
+                class="ir.gapgpt.actions.ImportInstructionsAction"
+                text="GapGPT: Import Rules &amp; Skills"
+                description="Copy rules and skills from other AI tools' folders into .gapgpt/ (originals stay)">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
     </actions>
 </idea-plugin>

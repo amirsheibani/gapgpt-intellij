@@ -10,49 +10,52 @@ import com.intellij.util.xmlb.XmlSerializerUtil
 class GapGptSettings : PersistentStateComponent<GapGptSettings.State> {
 
     class State {
-
-        /**
-         * Which engine answers chats: [BACKEND_GAPGPT] talks to the GapGPT API directly (all its models);
-         * [BACKEND_CLAUDE] runs the local Claude Code CLI exactly as installed, untouched.
-         */
-        var backend: String = BACKEND_GAPGPT
-        /** GapGPT OpenAI-compatible base URL. The API key is in the password safe, see [GapGptApi]. */
-        var gapgptBaseUrl: String = GapGptApi.DEFAULT_BASE_URL
-        /** Model used by the GapGPT engine (independent of the Claude Code [model]). */
-        var gapgptModel: String = GapGptApi.DEFAULT_MODEL
-        /** Let GapGPT models read/edit files, run commands and query the IDE (function calling). */
-        var gapgptTools: Boolean = true
-        /** Path to the `claude` executable. Empty = auto-detect. */
-        var cliPath: String = ""
-        /** Empty = Claude Code default model. e.g. "sonnet", "opus". */
-        var model: String = ""
-        /** Empty = CLI default. low | medium | high | xhigh | max */
-        var effort: String = ""
-        /** default | acceptEdits | plan | bypassPermissions */
-        var permissionMode: String = "default"
-        /** Open proposed edits in the IDE diff viewer automatically. */
-        var autoOpenDiff: Boolean = true
-        /** Share the current file / selection with Claude on every message. */
+        /** OpenAI-compatible base URL of the GapGPT API (without `/chat/completions`). CDN alternative: `https://api.gapapi.com/v1`. */
+        var baseUrl: String = "https://api.gapgpt.app/v1"
+        var model: String = "claude-sonnet-5-5"
+        /** Chat models last fetched from `GET {baseUrl}/models`; empty until fetched. */
+        var knownModels: MutableList<String> = mutableListOf()
+        var maxCompletionTokens: Int = 8000
+        /** Ask the server for a streamed (SSE) reply. */
+        var streaming: Boolean = true
+        /** Extra system prompt appended after the language prompt and the project rules. */
+        var systemPrompt: String = ""
+        /** Share the current file / selection with the assistant on every message. */
         var shareSelection: Boolean = true
-        /** Guard: safety rules for tool calls. */
-        var guardEnabled: Boolean = true
-        var guardDisabledRules: List<String> = emptyList()
-        /** Exact commands / paths the user whitelisted from Guard. */
-        var guardWhitelist: List<String> = emptyList()
-        /** Keep the chat scrolled to the bottom while Claude writes. */
+        /** Keep the chat scrolled to the bottom while the assistant writes. */
         var autoFollow: Boolean = true
-        /** Interface language of the plugin: "en" (default) or "fa". */
-        var uiLanguage: String = "en"
-        /** Reply language: "auto" = same as the user's message, "fa" or "en". */
-        var replyLanguage: String = "auto"
+        /** The agent uses the project's graphify code graph on every message (the graphify button in the chat toolbar). */
+        var useGraphify: Boolean = false
+        /** Keep the graph in the project's `graphify-out/` (shared with a graphify CLI) instead of the IDE system folder. */
+        var graphInProject: Boolean = false
+
+        /** UI language: "en" (default) or "fa". */
+        var language: String = "en"
+        /** Ask the assistant to answer in the language the user writes in (Persian or English). */
+        var matchReplyLanguage: Boolean = true
         /** Replace Arabic ي/ك with Persian ی/ک before sending. */
         var normalizeArabicChars: Boolean = true
-        /** Optional HTTPS proxy passed to the CLI, e.g. http://127.0.0.1:10809 */
+        /** Optional HTTP(S) proxy, e.g. http://127.0.0.1:10809 */
         var httpsProxy: String = ""
-        /** Extra CLI arguments, e.g. --add-dir ../shared */
-        var extraArgs: String = ""
         var fontSize: Int = 14
         var sendOnEnter: Boolean = true
+
+        /** Chat works as an agent: the model may call tools (read/search files, edit, run commands). */
+        var agentTools: Boolean = true
+        /** Apply file edits without asking. */
+        var autoApproveEdits: Boolean = false
+        /** Run shell commands without asking. */
+        var autoApproveCommands: Boolean = false
+        /** Open IntelliJ's diff viewer automatically when an edit waits for approval. */
+        var showDiffOnApproval: Boolean = true
+        /** Start MCP servers from .mcp.json / ~/.gapgpt/mcp.json and offer their tools to the agent. */
+        var mcpEnabled: Boolean = true
+        /** Maximum model requests (tool rounds) per message. */
+        var maxAgentSteps: Int = 40
+        /** Compact the conversation automatically when it gets close to [contextLimitTokens]. */
+        var autoCompact: Boolean = true
+        /** Context budget in tokens; compaction starts at 60% of it. Lower = cheaper requests. */
+        var contextLimitTokens: Int = 100_000
     }
 
     private var myState = State()
@@ -64,9 +67,6 @@ class GapGptSettings : PersistentStateComponent<GapGptSettings.State> {
     }
 
     companion object {
-        const val BACKEND_GAPGPT = "gapgpt"
-        const val BACKEND_CLAUDE = "claude"
-
         fun get(): State =
             ApplicationManager.getApplication().getService(GapGptSettings::class.java).state
     }

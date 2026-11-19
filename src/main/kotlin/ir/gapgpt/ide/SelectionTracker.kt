@@ -19,7 +19,7 @@ import com.intellij.util.Alarm
 
 /**
  * Tracks which file the user is looking at and what is selected, so it can be shared
- * with Claude automatically (like the official Claude Code plugin's "selection context").
+ * with the assistant automatically ("selection context").
  */
 @Service(Service.Level.PROJECT)
 class SelectionTracker(private val project: Project) : Disposable {
