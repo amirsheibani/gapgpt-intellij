@@ -7,60 +7,44 @@
   <style>
 /*__CSS__*/
   </style>
-  <!-- JS -> IDE bridge. Injected into the page itself (not from CefLoadHandler.onLoadEnd), so it
-       exists as soon as the page script runs, in both in-process and out-of-process JCEF. -->
-  <script>
-/*__BRIDGE__*/
-  </script>
 </head>
 <body>
-  <!-- chat tabs (one Claude process per tab) -->
+  <!-- chat tabs (one conversation per tab) -->
   <header id="topbar">
     <div class="tabs" id="chatTabs"></div>
     <div class="actions">
-      <button id="btnNewChat" class="icon" title="گفتگوی جدید"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>
-      <button id="btnSettings" class="icon" title="تنظیمات"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      <button id="btnNewChat" class="icon" title="New chat"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>
+      <button id="btnSettings" class="icon" title="Settings"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
     </div>
   </header>
-  <!-- per-chat sub tabs: main chat + subagents -->
-  <nav id="subTabs" class="subtabs"></nav>
-
   <main id="views">
     <section id="view-chat" class="view">
       <div id="searchBar" class="searchbar hidden">
-        <input id="searchInput" placeholder="جستجو در گفتگو… (Enter: بعدی)" dir="auto">
-        <button id="searchPrev" class="icon" title="قبلی"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg></button>
-        <button id="searchNext" class="icon" title="بعدی"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
-        <button id="searchClose" class="icon" title="بستن"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+        <input id="searchInput" placeholder="Search in chat… (Enter: next)" dir="auto">
+        <button id="searchPrev" class="icon" title="Previous"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg></button>
+        <button id="searchNext" class="icon" title="Next"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <button id="searchClose" class="icon" title="Close"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
       </div>
       <div id="chatLogs"></div>
     </section>
-    <section id="view-workloads" class="view hidden"></section>
     <section id="view-git" class="view hidden"></section>
-    <section id="view-guard" class="view hidden"></section>
-    <section id="view-vulns" class="view hidden"></section>
     <section id="view-log" class="view hidden"></section>
-    <section id="view-session" class="view hidden"></section>
     <section id="view-skills" class="view hidden"></section>
     <section id="view-rules" class="view hidden"></section>
   </main>
 
   <div id="status" class="status hidden">
-    <span class="spin" id="spin">✻</span><span id="statusText">در حال فکر کردن…</span>
+    <span class="spin" id="spin">✻</span><span id="statusText">Thinking…</span>
     <span class="hint" id="statusHint"></span>
   </div>
 
   <section id="info" class="info" dir="ltr">
-    <div class="limits" id="infoLimits"></div>
     <div><span class="k">Model:</span> <span class="v" id="infoModel">—</span></div>
     <div class="wide"><span class="k">Working dir:</span> <span class="v" id="infoCwd">—</span></div>
-    <div><span class="k">Account:</span> <span class="v" id="infoAccount">—</span></div>
-    <div><span class="k">Plan:</span> <span class="v" id="infoPlan">—</span></div>
-    <div><span class="k">Provider:</span> <span class="v" id="infoProvider">—</span></div>
+    <div><span class="k">API key:</span> <span class="v" id="infoKey">—</span></div>
+    <div><span class="k">Context:</span> <span class="v" id="infoCtx">—</span></div>
     <div><span class="state" id="infoState"><span class="sdot"></span><span id="infoStateText">Idle</span></span></div>
-    <div><span class="k">Context</span> <span class="bar"><span id="infoCtxBar"></span></span> <span class="v" id="infoCtx">0%</span></div>
-    <div><span class="v" id="infoOut">0</span> <span class="k">out</span> · <span class="v" id="infoReason">0</span> <span class="k">reasoning</span></div>
-    <div><span class="k">Cost</span> <span class="v" id="infoCost">$0.00</span></div>
+    <div><span class="k">Prompt</span> <span class="v" id="infoPrompt">0</span> · <span class="k">Reply</span> <span class="v" id="infoOut">0</span> · <span class="k">Total</span> <span class="v" id="infoTotal">0</span></div>
   </section>
 
   <div id="mention" class="popup hidden" dir="ltr"></div>
@@ -70,41 +54,34 @@
     <div class="card">
       <div class="ctabs">
         <div class="tabrow" id="viewTabs">
-          <button class="vt active" data-view="chat">گفتگو</button>
-          <button class="vt" data-view="workloads">کارها</button>
+          <button class="vt active" data-view="chat">Chat</button>
           <button class="vt" data-view="git">Git</button>
-          <button class="vt" data-view="guard">محافظ</button>
-          <button class="vt" data-view="vulns">آسیب‌پذیری‌ها</button>
-          <button class="vt" data-view="log">لاگ</button>
-          <button class="vt" data-view="session">نشست</button>
-          <button class="vt" data-view="skills">اسکیل‌ها</button>
-          <button class="vt" data-view="rules">قوانین</button>
+          <button class="vt" data-view="log">Log</button>
+          <button class="vt" data-view="skills">Skills</button>
+          <button class="vt" data-view="rules">Rules</button>
         </div>
         <div class="tabicons">
-          <button id="btnNewChat2" class="icon" title="گفتگوی جدید"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>
-          <button id="btnSearch" class="icon" title="جستجو در گفتگو"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></button>
+          <button id="btnNewChat2" class="icon" title="New chat"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>
+          <button id="btnSearch" class="icon" title="Search in chat"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></button>
           <button id="btnGit" class="icon" title="Git"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg></button>
-          <button id="btnMore" class="icon" title="بیشتر"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+          <button id="btnMore" class="icon" title="More"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
         </div>
       </div>
-      <textarea id="input" dir="auto" rows="2" placeholder="از Claude بپرسید، یا / برای دستورها و @ برای فایل‌ها"></textarea>
+      <textarea id="input" dir="auto" rows="2" placeholder="Ask GapGPT, or type / for skills and @ for files"></textarea>
       <div class="toolbar">
         <div class="group">
-          <button id="btnAttach" class="tb" title="افزودن فایل، پوشه یا تصویر"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
+          <button id="btnAttach" class="tb" title="Add files, folders or images"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
           <span class="sep"></span>
-          <button id="ddModel" class="tb dd" title="مدل"><span class="ic"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/></svg></span><span class="lbl" dir="ltr"></span><span class="car"><svg class="ico car-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></button>
-          <span class="sep"></span>
-          <button id="ddMode" class="tb dd" title="حالت دسترسی (Shift+Tab)"><span class="ic"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg></span><span class="lbl"></span><span class="car"><svg class="ico car-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></button>
-          <span class="sep"></span>
-          <button id="ddEffort" class="tb dd" title="میزان تلاش (effort)"><span class="ic"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg></span><span class="lbl" dir="ltr"></span><span class="car"><svg class="ico car-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></button>
+          <button id="ddModel" class="tb dd" title="Model"><span class="ic"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/></svg></span><span class="lbl" dir="ltr"></span><span class="car"><svg class="ico car-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></button>
         </div>
         <div class="group">
+          <button id="modeChip" class="chip mode" title=""></button>
+          <button id="graphifyChip" class="chip graph" title=""></button>
           <button id="ctxChip" class="chip hidden" title=""></button>
-          <button id="btnGuard" class="tb guard" title="محافظ (Guard)"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></button>
-          <button id="btnMore2" class="tb" title="بیشتر"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
-          <button id="btnLang" class="tb lang" title="زبان رابط"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg><span class="lbl" data-noi18n>EN</span></button>
-          <button id="btnSend" class="send" title="ارسال (Enter)"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg></button>
-          <button id="btnStop" class="stop hidden" title="توقف (Esc)"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="12" height="12" x="6" y="6" rx="2" fill="currentColor"/></svg></button>
+          <button id="btnMore2" class="tb" title="More"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+          <button id="btnLang" class="tb lang" title="Language"><span class="ic"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></span><span class="lbl">EN</span></button>
+          <button id="btnSend" class="send" title="Send (Enter)"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg></button>
+          <button id="btnStop" class="stop hidden" title="Stop (Esc)"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="12" height="12" x="6" y="6" rx="2" fill="currentColor"/></svg></button>
         </div>
       </div>
     </div>
@@ -115,21 +92,10 @@
   <template id="tplWelcome">
     <div class="welcome-wrap">
       <div class="welcome">
-        <div class="title"><svg class="logo" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 2.5h6A2.5 2.5 0 0 1 13.5 5v4A2.5 2.5 0 0 1 11 11.5H7.6L4.5 14v-2.6A2.5 2.5 0 0 1 2.5 9V5A2.5 2.5 0 0 1 5 2.5z" stroke="#5B9FE0" stroke-width="1.3" stroke-linejoin="round"/><path d="M10.05 5.55A2.5 2.5 0 1 0 10.5 7H8.5" stroke="#5B9FE0" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>به <b>GapGPT</b> خوش آمدید!</div>
+        <div class="title"><svg class="logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 3h16a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2h-8l-5 4v-4H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="none" stroke="#1F9DB4" stroke-width="1.8" stroke-linejoin="round"/><path d="M8.2 14 12 6l3.8 8M9.6 11.6h4.8" fill="none" stroke="#1F9DB4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="wt"></span></div>
         <div class="cwd"></div>
       </div>
-      <div class="tips">
-        <div>نکته‌هایی برای شروع:</div>
-        <ol>
-          <li>سؤال بپرسید، کد را ویرایش کنید یا دستور اجرا کنید — به فارسی.</li>
-          <li>با <kbd>@</kbd> به فایل‌ها و با <kbd>/</kbd> به دستورها دسترسی دارید.</li>
-          <li>تغییرات پیشنهادی در Diff Viewer نمایش داده می‌شوند تا بپذیرید یا رد کنید.</li>
-          <li><kbd>Shift+Tab</kbd> حالت دسترسی را عوض می‌کند، <kbd>Esc</kbd> پاسخ را متوقف می‌کند.</li>
-        </ol>
-        <button class="sugg">ساختار این پروژه را توضیح بده</button>
-        <button class="sugg">باگ‌های احتمالی کد را پیدا کن</button>
-        <button class="sugg">برای این پروژه یک README فارسی بنویس</button>
-      </div>
+      <div class="tips"></div>
     </div>
   </template>
 

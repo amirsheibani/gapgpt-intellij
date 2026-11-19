@@ -6,18 +6,17 @@
   const inputEl = $("input");
 
   const G = {
-    inited: false, // set once the IDE's "init" message has been applied
     sendOnEnter: true,
     projectPath: "",
-    permissionMode: "default",
     model: "",
-    effort: "",
+    models: [],
+    modelsLoading: false,
+    modelsError: "",
     shareSelectionSetting: true,
-    guardEnabled: true,
     autoFollow: true,
+    useGraphify: false,
     ctx: null,
-    account: null,
-    limits: {},
+    hasKey: null,
     commands: null,
     recent: [],
     mention: { open: false, items: [], idx: 0, reqId: 0, start: -1 },
@@ -27,38 +26,47 @@
     order: [],
     active: null,
     seq: 0,
-    guard: null,
-    guardTab: "blocked",
-    guardOnlyChat: true,
     logLines: [],
     logFilter: "ALL",
     logDebug: false,
-    vulnInv: null,
-    vulnRes: null,
-    vulnBusy: false,
-    vulnShowList: false,
     git: null,
-    keepMin: 15,
     skills: null,
     skillQ: "",
-    usageInsights: "",
-    usageAt: 0,
-    modelOpen: {},
     rules: null,
-    backend: "gapgpt", // "gapgpt" = GapGPT API directly · "claude" = local Claude Code CLI
-    gapModels: null, // [{id, owner}] from GET /v1/models
-    gapModelsError: "",
-    modelFilter: "",
-    lang: "en", // interface language: "en" | "fa"
-    gap: null, // GapGPT status: selected model's price / limits, account credit, per-model usage
+    importPreview: null,
+    importNote: null,
+    lang: "en",
   };
-  const isGap = () => G.backend === "gapgpt";
 
   function toIde(obj) {
     if (window.__toIde) window.__toIde(JSON.stringify(obj));
   }
   function chat() {
     return G.chats[G.active];
+  }
+
+  // ==================================================================== i18n + text direction
+  /** Picks the English or Persian string for the current UI language. Works for any value type. */
+  const tr = (en, fa) => (G.lang === "fa" ? fa : en);
+  const uiDir = () => (G.lang === "fa" ? "rtl" : "ltr");
+  const thinking = () => tr("Thinking…", "در حال فکر کردن…");
+  const RTL_CH = /[\u0591-\u07FF\u0860-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFC]/g;
+  const LTR_CH = /[A-Za-z\u00C0-\u024F\u0370-\u03FF\u0400-\u04FF]/g;
+  /**
+   * Direction of a piece of prose. Unlike dir="auto" (first strong character) it weighs the whole text, so a
+   * Persian sentence that starts with an English word ("React یک کتابخانه است") is still right-to-left.
+   * Code, URLs and paths are ignored; text without letters gets [fallback] (default: the UI direction).
+   */
+  function textDir(s, fallback) {
+    s = String(s || "")
+      .replace(/```[\s\S]*?(```|$)/g, " ")
+      .replace(/`[^`\n]*`/g, " ")
+      .replace(/https?:\/\/\S+/g, " ")
+      .replace(/\S*[\/\\@]\S*/g, " ");
+    const r = (s.match(RTL_CH) || []).length;
+    const l = (s.match(LTR_CH) || []).length;
+    if (!r && !l) return fallback || uiDir();
+    return r >= 0.3 * (r + l) ? "rtl" : "ltr";
   }
 
   // ==================================================================== markdown (small, safe)
@@ -90,37 +98,23 @@
     const id = "cb" + Math.random().toString(36).slice(2);
     return (
       '<div class="codeblock"><div class="bar"><span>' + esc(lang || "") + '</span><span class="btns">' +
-      '<button data-act="insert" data-target="' + id + '" title="درج در ویرایشگر">درج</button>' +
-      '<button data-act="copy" data-target="' + id + '" title="کپی">کپی</button></span></div>' +
+      '<button data-act="insert" data-target="' + id + '" title="' + tr("Insert at caret", "درج در ویرایشگر") + '">' + tr("Insert", "درج") + "</button>" +
+      '<button data-act="copy" data-target="' + id + '" title="' + tr("Copy", "کپی") + '">' + tr("Copy", "کپی") + "</button></span></div>" +
       '<pre><code id="' + id + '">' + esc(code) + "</code></pre></div>"
     );
   }
 
-  // ==================================================================== bidi
-  const RTL_CHARS = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/g;
-  const LTR_CHARS = /[A-Za-z\u00C0-\u024F\u0370-\u03FF\u0400-\u04FF]/g;
-  /**
-   * Direction of a piece of text by the majority of its letters (not the first strong character), so
-   * "React یک کتابخانه است" stays RTL and "Use the فایل button" stays LTR. Code spans and URLs are ignored.
-   */
-  function textDir(text) {
-    const t = String(text || "").replace(/`[^`\n]*`/g, " ").replace(/https?:\/\/\S+/g, " ");
-    const r = (t.match(RTL_CHARS) || []).length;
-    const l = (t.match(LTR_CHARS) || []).length;
-    if (!r && !l) return "auto";
-    return r >= l ? "rtl" : "ltr";
-  }
-  const dirAttr = (text) => ' dir="' + textDir(text) + '"';
-
+  /** Small markdown renderer. Every block gets its own dir, so mixed Persian / English answers never break. */
   function markdown(src) {
     const lines = src.replace(/\r\n/g, "\n").split("\n");
+    const base = textDir(src);
+    const dirOf = (t) => ' dir="' + textDir(t, base) + '"';
     let out = "";
     let i = 0;
     let para = [];
     const flush = () => {
       if (para.length) {
-        // One block per line: each line of a mixed Persian/English paragraph gets its own direction.
-        out += para.map((l, k) => "<p" + (k ? ' class="cont"' : "") + dirAttr(l) + ">" + inline(l) + "</p>").join("");
+        out += "<p" + dirOf(para.join("\n")) + ">" + para.map(inline).join("<br>") + "</p>";
         para = [];
       }
     };
@@ -140,7 +134,7 @@
       const h = line.match(/^(#{1,4})\s+(.*)$/);
       if (h) {
         flush();
-        out += "<h" + h[1].length + dirAttr(h[2]) + ">" + inline(h[2]) + "</h" + h[1].length + ">";
+        out += "<h" + h[1].length + dirOf(h[2]) + ">" + inline(h[2]) + "</h" + h[1].length + ">";
         i++;
         continue;
       }
@@ -153,16 +147,15 @@
       if (/^\s*\|.*\|\s*$/.test(line) && i + 1 < lines.length && /^\s*\|[\s:\-|]+\|\s*$/.test(lines[i + 1])) {
         flush();
         const row = (l) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
-        let j = i + 2;
-        while (j < lines.length && /^\s*\|.*\|\s*$/.test(lines[j])) j++;
-        const tableDir = textDir([line].concat(lines.slice(i + 2, j)).join(" "));
-        out += '<table dir="' + tableDir + '"><tr>' + row(line).map((c) => "<th" + dirAttr(c) + ">" + inline(c) + "</th>").join("") + "</tr>";
+        let rows = "<tr>" + row(line).map((c) => "<th>" + inline(c) + "</th>").join("") + "</tr>";
+        const text = [line];
         i += 2;
         while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) {
-          out += "<tr>" + row(lines[i]).map((c) => "<td" + dirAttr(c) + ">" + inline(c) + "</td>").join("") + "</tr>";
+          rows += "<tr>" + row(lines[i]).map((c) => "<td>" + inline(c) + "</td>").join("") + "</tr>";
+          text.push(lines[i]);
           i++;
         }
-        out += "</table>";
+        out += "<table" + dirOf(text.join("\n")) + ">" + rows + "</table>";
         continue;
       }
       const li = line.match(/^\s*([-*+]|\d+[.)])\s+(.*)$/);
@@ -176,15 +169,14 @@
           items.push(m[2]);
           i++;
         }
-        // The list's direction (bullet side) follows the majority; each item keeps its own direction.
-        out += "<" + tag + dirAttr(items.join(" ")) + ">" + items.map((t) => "<li" + dirAttr(t) + ">" + inline(t) + "</li>").join("") + "</" + tag + ">";
+        out += "<" + tag + dirOf(items.join("\n")) + ">" + items.map((x) => "<li>" + inline(x) + "</li>").join("") + "</" + tag + ">";
         continue;
       }
       if (/^\s*>/.test(line)) {
         flush();
         const buf = [];
         while (i < lines.length && /^\s*>/.test(lines[i])) buf.push(lines[i++].replace(/^\s*>\s?/, ""));
-        out += "<blockquote" + dirAttr(buf.join(" ")) + ">" + buf.map((l) => "<div" + dirAttr(l) + ">" + inline(l) + "</div>").join("") + "</blockquote>";
+        out += "<blockquote" + dirOf(buf.join("\n")) + ">" + buf.map(inline).join("<br>") + "</blockquote>";
         continue;
       }
       if (line.trim() === "") flush();
@@ -209,65 +201,50 @@
     n = n || 0;
     return n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? (n / 1e3).toFixed(1) + "k" : String(n);
   }
-  function fmtInt(n) {
-    return (n || 0).toLocaleString("en-US");
-  }
-  const MONTHS = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
-  /** "Nov 21 at 7:30am (Asia/Tehran)" -> epoch seconds (local time), or 0. */
-  function parseResetText(t) {
-    const m = /^([A-Za-z]{3})\w*\s+(\d{1,2})\s+at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i.exec(t || "");
-    if (!m) return 0;
-    let h = +m[3] % 12;
-    if (m[5].toLowerCase() === "pm") h += 12;
-    const now = new Date();
-    const d = new Date(now.getFullYear(), MONTHS[m[1].toLowerCase()], +m[2], h, +(m[4] || 0));
-    if (d.getTime() < now.getTime() - 86400000 * 30) d.setFullYear(d.getFullYear() + 1);
-    return Math.floor(d.getTime() / 1000);
-  }
-  function fmtReset(sec) {
-    if (!sec) return "";
-    const d = Math.max(0, Math.round((sec * 1000 - Date.now()) / 60000));
-    return Math.floor(d / 60) + "h " + (d % 60) + "m";
-  }
   function modelLabel(id) {
-    if (!id) return "پیش‌فرض";
-    const known = ALL_MODELS.find((m) => m[0] === id);
-    if (known) return known[1];
-    const m = /^claude-([a-z]+)-(\d+)(?:-(\d))?(?:-\d{8})?(\[1m\])?$/.exec(id);
-    if (m) return cap(m[1]) + " " + m[2] + (m[3] ? "." + m[3] : "") + (m[4] ? " · 1M" : "");
-    return cap(id);
-  }
-  function countLines(s) {
-    s = String(s || "").replace(/\n+$/, "");
-    return s ? s.split("\n").length : 0;
-  }
-  function cap(s) {
-    s = String(s || "");
-    return s ? s[0].toUpperCase() + s.slice(1) : s;
+    return id || tr("Default", "پیش‌فرض");
   }
 
   // ==================================================================== chats (tabs)
   function mkTarget(el) {
-    return { el, turn: null, blocks: {}, streamed: new Set() };
+    return { el, turn: null, block: null };
   }
 
   function welcomeEl() {
     const w = $("tplWelcome").content.cloneNode(true).querySelector(".welcome-wrap");
-    w.querySelector(".cwd").textContent = "cwd: " + G.projectPath;
+    fillWelcome(w);
     return w;
   }
+  function fillWelcome(w) {
+    w.querySelector(".wt").innerHTML = tr("Welcome to <b>GapGPT</b>!", "به <b>GapGPT</b> خوش آمدید!");
+    w.querySelector(".cwd").textContent = "cwd: " + G.projectPath;
+    const tips = tr([
+      "Ask questions about code or anything else — in English or Persian.",
+      "Use <kbd>@</kbd> to attach project files and <kbd>/</kbd> to run your skills.",
+      "Rules and skills live in the <code>.gapgpt</code> folder; see the Rules and Skills tabs.",
+      "<kbd>Esc</kbd> stops the reply.",
+    ], [
+      "درباره کد یا هر موضوع دیگری سؤال بپرسید — به فارسی یا انگلیسی.",
+      "با <kbd>@</kbd> فایل‌های پروژه را پیوست و با <kbd>/</kbd> اسکیل‌هایتان را اجرا کنید.",
+      "قوانین و اسکیل‌ها در پوشهٔ <code>.gapgpt</code> هستند؛ تب‌های «قوانین» و «اسکیل‌ها» را ببینید.",
+      "<kbd>Esc</kbd> پاسخ را متوقف می‌کند.",
+    ]);
+    const sugg = tr(
+      ["Explain the structure of this project", "Find possible bugs in the code", "Write a README for this project"],
+      ["ساختار این پروژه را توضیح بده", "باگ‌های احتمالی کد را پیدا کن", "برای این پروژه یک README فارسی بنویس"]);
+    w.querySelector(".tips").innerHTML = "<div>" + tr("Tips for getting started:", "نکته‌هایی برای شروع:") + "</div><ol>" +
+      tips.map((x) => "<li>" + x + "</li>").join("") + "</ol>" + sugg.map((x) => '<button class="sugg">' + esc(x) + "</button>").join("");
+  }
 
-  function freshUsage(win) {
-    // outTok/reasoning: finished turns. turnOut/turnReason: finished messages of the running turn.
-    // cur: the message being streamed right now (estimated from text, replaced by exact counts).
-    return { ctx: 0, window: win || 200000, outTok: 0, reasoning: 0, cost: 0, turnOut: 0, turnReason: 0, cur: null };
+  function freshUsage() {
+    // Totals of finished replies (from the API's `usage`) and the live estimate of the reply being streamed.
+    return { prompt: 0, completion: 0, total: 0, cost: 0, priced: true, liveChars: 0 };
   }
-  function liveOut(u) {
-    return u.outTok + u.turnOut + (u.cur ? u.cur.out : 0);
-  }
-  function liveReason(u) {
-    return u.reasoning + u.turnReason + (u.cur ? u.cur.reason : 0);
-  }
+  /** "$0.0123" (4 decimals under $1, else 2). */
+  const fmtUsd = (v) => "$" + (v < 1 ? v.toFixed(4) : v.toFixed(2));
+  /** Rough token estimate for streamed text (~3.5 chars per token, Persian/code mixed). */
+  const estTok = (chars) => chars / 3.5;
+
   let infoScheduled = false;
   function scheduleInfo(c) {
     if (c !== chat() || infoScheduled) return;
@@ -284,12 +261,7 @@
     log.className = "chatlog";
     log.appendChild(welcomeEl());
     $("chatLogs").appendChild(log);
-    G.chats[id] = {
-      id, title: "", busy: false, log, main: mkTarget(log), tools: {}, perms: {}, stderr: [],
-      agents: {}, agentOrder: [], viewAgent: null, usage: freshUsage(),
-      model: "", cwd: "", version: "", sessionId: null,
-      connected: false, startedAt: 0, statusText: "", shareCtx: true, sessionInfo: null, failed: false,
-    };
+    G.chats[id] = { id, title: "", busy: false, log, main: mkTarget(log), usage: freshUsage(), startedAt: 0, statusText: "", shareCtx: true, failed: false };
     G.order.push(id);
     activate(id);
     return G.chats[id];
@@ -300,7 +272,6 @@
     if (!c) return;
     toIde({ type: "closeChat", chat: id });
     c.log.remove();
-    Object.values(c.agents).forEach((a) => a.el.remove());
     delete G.chats[id];
     G.order = G.order.filter((x) => x !== id);
     if (!G.order.length) newChat();
@@ -312,13 +283,138 @@
     toIde({ type: "clearChat", chat: c.id });
     c.log.innerHTML = "";
     c.log.appendChild(welcomeEl());
-    Object.values(c.agents).forEach((a) => a.el.remove());
-    Object.assign(c, {
-      title: "", main: mkTarget(c.log), tools: {}, perms: {}, agents: {}, agentOrder: [], viewAgent: null,
-      usage: freshUsage(c.usage.window), sessionId: null, connected: false, sessionInfo: null, failed: false,
-    });
-    notice(c, c.main, "⎿  گفتگوی جدید شروع شد.", "");
+    Object.assign(c, { title: "", main: mkTarget(c.log), usage: freshUsage(), failed: false, busy: false });
+    notice(c, c.main, tr("⎿  New conversation started.", "⎿  گفتگوی جدید شروع شد."), "");
     refreshChatUi();
+  }
+
+  // ==================================================================== plan mode
+  function renderMode() {
+    const c = chat();
+    const b = $("modeChip");
+    if (!b) return;
+    const on = !!(c && c.plan);
+    b.classList.toggle("on", on);
+    b.textContent = on ? tr("⏸ plan mode", "⏸ حالت طرح") : tr("⏵ agent", "⏵ ایجنت");
+    b.title = on
+      ? tr("Plan mode: the assistant only reads and plans; it asks before changing anything. Click or Shift+Tab to turn off.",
+        "حالت طرح: دستیار فقط می‌خواند و طرح می‌دهد و قبل از هر تغییر می‌پرسد. برای خاموش کردن کلیک کنید یا Shift+Tab.")
+      : tr("Agent mode: the assistant may edit files and run commands (with your approval). Click or Shift+Tab for plan mode.",
+        "حالت ایجنت: دستیار می‌تواند فایل‌ها را ویرایش و دستور اجرا کند (با تأیید شما). برای حالت طرح کلیک کنید یا Shift+Tab.");
+  }
+  function togglePlan() {
+    const c = chat();
+    if (!c || c.busy) return;
+    c.plan = !c.plan;
+    renderMode();
+  }
+
+  // ==================================================================== graphify toggle
+  function renderGraphify() {
+    const b = $("graphifyChip");
+    if (!b) return;
+    const on = !!G.useGraphify;
+    b.classList.toggle("on", on);
+    b.textContent = on ? "◆ graphify" : "◇ graphify";
+    b.title = on
+      ? tr("graphify on: the assistant starts from the project's code graph. Click to turn off.",
+        "graphify روشن است: دستیار از گراف کد پروژه شروع می‌کند. برای خاموش کردن کلیک کنید.")
+      : tr("graphify off: the code graph is not used. Click to turn on (builds the graph the first time).",
+        "graphify خاموش است: از گراف کد استفاده نمی‌شود. برای روشن کردن کلیک کنید (بار اول گراف ساخته می‌شود).");
+  }
+  function toggleGraphify() {
+    G.useGraphify = !G.useGraphify;
+    renderGraphify();
+    const c = chat();
+    toIde(c ? { type: "setGraphify", value: G.useGraphify, chat: c.id } : { type: "setGraphify", value: G.useGraphify });
+  }
+
+  // ==================================================================== todo list
+  function renderTodos(c, items) {
+    flushBlock(c);
+    const d = document.createElement("div");
+    d.className = "tool done";
+    d.innerHTML = '<div class="head"><span class="bullet">⏺</span><div class="call"><span class="name">Update Todos</span></div></div>' +
+      '<div class="result"><span class="elbow">⎿</span><div class="body todos"></div></div>';
+    const body = d.querySelector(".todos");
+    items.forEach((t) => {
+      const r = document.createElement("div");
+      const st = t.status || "pending";
+      r.className = "t " + st;
+      r.dir = textDir(t.content);
+      r.innerHTML = '<span class="box"></span><span class="tx"></span>';
+      r.querySelector(".box").textContent = st === "completed" ? "☒" : st === "in_progress" ? "◐" : "☐";
+      r.querySelector(".tx").textContent = t.content || "";
+      body.appendChild(r);
+    });
+    turnEl(c.main).appendChild(d);
+    scrollDown(c.main);
+  }
+
+  // ==================================================================== saved conversations (/resume)
+  function openResume() {
+    const c = chat();
+    if (!c || c.busy) return;
+    G.resumeAnchor = $("btnMore2");
+    showMenu(G.resumeAnchor, [{ header: tr("Loading…", "در حال بارگذاری…") }]);
+    toIde({ type: "listSessions", chat: c.id });
+  }
+
+  function fmtWhen(ms) {
+    if (!ms) return "";
+    const d = new Date(ms);
+    const mins = Math.round((Date.now() - ms) / 60000);
+    if (mins < 1) return tr("just now", "همین الان");
+    if (mins < 60) return mins + tr(" min ago", " دقیقه پیش");
+    if (mins < 60 * 24) return Math.round(mins / 60) + tr(" h ago", " ساعت پیش");
+    return d.toLocaleDateString(G.lang === "fa" ? "fa-IR" : "en-US") + " " + d.toLocaleTimeString(G.lang === "fa" ? "fa-IR" : "en-US", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function showSessions(c, p) {
+    if (!G.resumeAnchor || c !== chat()) return;
+    const items = (p.items || []).filter((x) => !x.current);
+    const list = [{ header: tr("Resume a conversation", "ادامهٔ یک گفتگو") }];
+    if (!items.length) list.push({ header: tr("No saved conversations yet.", "هنوز گفتگوی ذخیره‌شده‌ای نیست.") });
+    items.slice(0, 30).forEach((x) => list.push({
+      label: x.title || tr("(untitled)", "(بدون عنوان)"),
+      desc: fmtWhen(x.updated) + " · " + x.messages + tr(" messages", " پیام"),
+      onClick: () => toIde({ type: "resumeSession", chat: c.id, id: x.id }),
+    }));
+    showMenu(G.resumeAnchor, list);
+  }
+
+  /** Rebuilds a chat from a saved transcript. */
+  function renderTranscript(c, p) {
+    c.log.innerHTML = "";
+    Object.assign(c, { title: p.title || "", main: mkTarget(c.log), usage: freshUsage(), failed: false, busy: false, tools: {} });
+    (p.items || []).forEach((it) => {
+      switch (it.t) {
+        case "user":
+          addUser(c.main, it.text || "");
+          break;
+        case "assistant": {
+          const el = newTextBlock(c.main);
+          el.innerHTML = markdown(it.text || "");
+          break;
+        }
+        case "tool":
+          onToolStart(c, it);
+          if (it.ended) onToolEnd(c, it);
+          break;
+        case "todos":
+          renderTodos(c, it.items || []);
+          break;
+        case "notice":
+          notice(c, c.main, it.text || "", it.kind || "");
+          break;
+      }
+    });
+    closeTools(c);
+    c.main.turn = null;
+    notice(c, c.main, tr("⎿  Resumed conversation from ", "⎿  ادامهٔ گفتگوی ") + fmtWhen(p.updated) + ".", "");
+    setBusy(c, false);
+    refreshChatUi();
+    scrollDown(c.main, true);
   }
 
   function activate(id) {
@@ -329,43 +425,26 @@
 
   function refreshChatUi() {
     const c = chat();
-    Object.values(G.chats).forEach((x) => {
-      x.log.classList.toggle("hidden", !(x === c && !x.viewAgent));
-      Object.values(x.agents).forEach((a) => a.el.classList.toggle("hidden", !(x === c && x.viewAgent === a.id)));
-    });
+    Object.values(G.chats).forEach((x) => x.log.classList.toggle("hidden", x !== c));
     renderTabs();
-    renderSubTabs();
     renderInfo();
     renderCtx();
+    renderMode();
     syncBusyUi();
   }
 
   function renderTabs() {
     $("chatTabs").innerHTML = G.order.map((id) => {
       const c = G.chats[id];
-      const dot = c.busy ? "busy" : c.failed ? "err" : c.connected ? "ok" : "";
-      const t = esc(c.title || "گفتگوی جدید");
+      const dot = c.busy ? "busy" : c.failed ? "err" : "";
+      const t = esc(c.title || tr("New chat", "گفتگوی جدید"));
       return '<div class="pill' + (id === G.active ? " active" : "") + '" data-chat="' + id + '" title="' + t + '">' +
-        '<span class="dot ' + dot + '"></span><span class="t">' + t + "</span>" +
-        '<span class="x" data-close="' + id + '" title="بستن">×</span></div>';
+        '<span class="dot ' + dot + '"></span><span class="t" dir="' + textDir(c.title) + '">' + t + "</span>" +
+        '<span class="x" data-close="' + id + '" title="' + tr("Close", "بستن") + '">×</span></div>';
     }).join("");
   }
 
-  function renderSubTabs() {
-    const c = chat();
-    const box = $("subTabs");
-    if (!c) return (box.innerHTML = "");
-    let html = '<div class="pill' + (c.viewAgent ? "" : " active") + '" data-agent="">گفتگو</div>';
-    c.agentOrder.forEach((aid) => {
-      const a = c.agents[aid];
-      const dot = a.status === "running" ? "busy" : a.status === "error" ? "err" : "ok";
-      html += '<div class="pill agent' + (c.viewAgent === aid ? " active" : "") + '" data-agent="' + aid + '" title="' + esc(a.desc) + '">' +
-        '<span class="dot ' + dot + '"></span><span class="t">' + esc(a.desc || a.type || "Agent") + "</span></div>";
-    });
-    box.innerHTML = html;
-  }
-
-  // ==================================================================== rendering into a target (main chat or subagent)
+  // ==================================================================== rendering into a chat
   function scrollDown(T, force) {
     const el = T.el;
     if (el.classList.contains("hidden")) return;
@@ -382,8 +461,18 @@
     hideWelcome(T);
     const d = document.createElement("div");
     d.className = "msg user";
-    d.innerHTML = '<span class="prompt">&gt;</span><span class="text"></span>';
-    setDirLines(d.querySelector(".text"), text);
+    d.innerHTML = '<span class="prompt">&gt;</span><div class="text"></div>';
+    // One block per line, each with its own direction (a Persian question followed by an English line stays readable).
+    const box = d.querySelector(".text");
+    const base = textDir(text);
+    box.dir = base;
+    String(text).split("\n").forEach((line) => {
+      const ln = document.createElement("div");
+      ln.dir = textDir(line, base);
+      if (line) ln.textContent = line;
+      else ln.appendChild(document.createElement("br"));
+      box.appendChild(ln);
+    });
     T.el.appendChild(d);
     T.turn = null;
     scrollDown(T, true);
@@ -427,283 +516,10 @@
     T = T || c.main;
     const d = document.createElement("div");
     d.className = "notice " + (kind || "");
-    d.dir = "auto";
+    d.dir = textDir(text);
     d.textContent = text;
     (T.turn || T.el).appendChild(d);
     scrollDown(T);
-  }
-
-  // ==================================================================== tools: "⏺ Name(arg)" + "⎿ result"
-  const AGENT_TOOLS = { Task: 1, Agent: 1 };
-  const TOOL_FA = {
-    Read: "خواندن", Write: "نوشتن", Edit: "ویرایش", MultiEdit: "ویرایش", Bash: "اجرای دستور",
-    Glob: "جستجوی فایل", Grep: "جستجو در کد", LS: "فهرست", WebFetch: "دریافت صفحه", WebSearch: "جستجوی وب",
-    Task: "زیرعامل", Agent: "زیرعامل", TodoWrite: "فهرست کارها", NotebookEdit: "ویرایش نوت‌بوک",
-    mcp__gapgpt__getDiagnostics: "بررسی خطاهای IDE", mcp__gapgpt__getOpenEditors: "فایل‌های باز IDE",
-    mcp__gapgpt__getCurrentSelection: "انتخاب فعلی IDE", mcp__gapgpt__openFile: "باز کردن فایل در IDE",
-    mcp__gapgpt__getWorkspaceFolders: "پوشه‌های پروژه",
-  };
-
-  function displayName(name) {
-    if (name === "Edit" || name === "MultiEdit") return "Update";
-    if (name === "TodoWrite") return "Update Todos";
-    const m = /^mcp__(.+?)__(.+)$/.exec(name || "");
-    if (m) return (m[1] === "gapgpt" ? "ide" : m[1]) + " - " + m[2] + " (MCP)";
-    return name;
-  }
-
-  function toolSummary(name, input) {
-    if (!input || name === "TodoWrite") return "";
-    const v = input.file_path || input.notebook_path || input.command || input.pattern || input.url ||
-      input.query || input.description || input.prompt || input.uri || input.filePath || "";
-    let s = relPath(v);
-    if (name === "Grep" && input.path) s = 'pattern: "' + s + '", path: "' + relPath(input.path) + '"';
-    s = s.replace(/\s*\n\s*/g, " ");
-    return s.length > 200 ? s.slice(0, 200) + "…" : s;
-  }
-
-  function agentFor(c, id) {
-    let a = c.agents[id];
-    if (!a) {
-      const el = document.createElement("div");
-      el.className = "chatlog hidden";
-      $("chatLogs").appendChild(el);
-      a = c.agents[id] = { id, desc: "", type: "", status: "running", started: Date.now(), ended: 0, el, T: mkTarget(el) };
-      c.agentOrder.push(id);
-    }
-    return a;
-  }
-
-  function addTool(c, T, id, name, input) {
-    let t = id && c.tools[id];
-    if (!t) {
-      const el = document.createElement("div");
-      el.className = "tool running";
-      el.innerHTML = '<div class="head"><span class="bullet">⏺</span><div class="call"><span class="name"></span>' +
-        '<span class="arg"></span><span class="fa"></span></div></div>';
-      el.querySelector(".name").textContent = displayName(name);
-      el.querySelector(".fa").textContent = TOOL_FA[name] || "";
-      turnEl(T).appendChild(el);
-      t = { el, name, input: null, T };
-      if (id) c.tools[id] = t;
-    }
-    if (input) {
-      t.input = input;
-      const arg = toolSummary(name, input);
-      t.el.querySelector(".arg").textContent = arg ? "(" + arg + ")" : "";
-      t.el.querySelector(".call").title = arg;
-    }
-    if (AGENT_TOOLS[name] && id) {
-      const a = agentFor(c, id);
-      if (input) {
-        a.desc = input.description || a.desc;
-        a.type = input.subagent_type || a.type;
-      }
-      if (!t.el.querySelector(".open")) {
-        const o = document.createElement("span");
-        o.className = "open";
-        o.dataset.openAgent = id;
-        o.textContent = "مشاهدهٔ زیرعامل ›";
-        t.el.querySelector(".call").appendChild(o);
-      }
-      if (c === chat()) renderSubTabs();
-      if (G.view === "workloads") renderWorkloads();
-    }
-    scrollDown(T);
-    return t;
-  }
-
-  function resultText(content) {
-    if (typeof content === "string") return content;
-    if (Array.isArray(content)) return content.map((x) => (x && x.type === "text" ? x.text : x && x.type === "image" ? "[image]" : "")).join("\n");
-    return "";
-  }
-
-  function diffHtml(oldStr, newStr, maxRows) {
-    const a = String(oldStr || "").split("\n");
-    const b = String(newStr || "").split("\n");
-    let p = 0;
-    while (p < a.length && p < b.length && a[p] === b[p]) p++;
-    let s = 0;
-    while (s < a.length - p && s < b.length - p && a[a.length - 1 - s] === b[b.length - 1 - s]) s++;
-    const rows = [];
-    const ctx = (l) => rows.push('<div class="ln"><span class="sign"> </span>' + esc(l) + "</div>");
-    if (p > 0) ctx(a[p - 1]);
-    a.slice(p, a.length - s).forEach((l) => rows.push('<div class="ln rem"><span class="sign">-</span>' + esc(l) + "</div>"));
-    b.slice(p, b.length - s).forEach((l) => rows.push('<div class="ln add"><span class="sign">+</span>' + esc(l) + "</div>"));
-    if (s > 0) ctx(a[a.length - s]);
-    let html = rows.slice(0, maxRows).join("");
-    if (rows.length > maxRows) html += '<div class="ln gap">  … +' + (rows.length - maxRows) + " lines</div>";
-    return { html: '<div class="diff">' + html + "</div>", added: b.length - p - s, removed: a.length - p - s };
-  }
-
-  function editDiff(name, input) {
-    if (name === "Edit") return diffHtml(input.old_string, input.new_string, 40);
-    if (name === "MultiEdit" && Array.isArray(input.edits)) {
-      let html = "", added = 0, removed = 0;
-      input.edits.forEach((e) => {
-        const d = diffHtml(e.old_string, e.new_string, 20);
-        html += d.html;
-        added += d.added;
-        removed += d.removed;
-      });
-      return { html, added, removed };
-    }
-    if (name === "Write") {
-      const lines = String(input.content || "").split("\n");
-      const shown = lines.slice(0, 12).map((l) => '<div class="ln add"><span class="sign">+</span>' + esc(l) + "</div>").join("");
-      const more = lines.length > 12 ? '<div class="ln gap">  … +' + (lines.length - 12) + " lines</div>" : "";
-      return { html: '<div class="diff">' + shown + more + "</div>", added: lines.length, removed: 0 };
-    }
-    return null;
-  }
-
-  function todosHtml(todos) {
-    if (!Array.isArray(todos)) return "";
-    return '<div class="todos">' + todos.map((t) =>
-      '<div class="t ' + esc(t.status || "") + '"><span class="box">' + (t.status === "completed" ? "☒" : "☐") + "</span>" +
-      esc(t.content || t.activeForm || "") + "</div>").join("") + "</div>";
-  }
-
-  function previewLines(text, n) {
-    const lines = String(text).replace(/\n+$/, "").split("\n");
-    const rest = lines.length - n;
-    return "<pre>" + esc(lines.slice(0, n).join("\n")) + "</pre>" +
-      (rest > 0 ? '<span class="more">… +' + rest + ' خط (برای نمایش کلیک کنید)</span><pre class="hidden full">' +
-        esc(lines.slice(n).join("\n")) + "</pre>" : "");
-  }
-
-  function setToolResult(c, id, t, isError, content) {
-    const name = t.name, input = t.input || {}, text = resultText(content);
-    let html;
-    if (isError) html = previewLines(text.replace(/<\/?tool_use_error>/g, "").trim() || "Error", 4);
-    else if (name === "Edit" || name === "MultiEdit" || name === "Write") {
-      const d = editDiff(name, input);
-      const summary = name === "Write"
-        ? countLines(input.content) + " خط در " + relPath(input.file_path) + " نوشته شد"
-        : relPath(input.file_path) + " به‌روزرسانی شد: " + (d ? d.added : 0) + " خط اضافه، " + (d ? d.removed : 0) + " خط حذف";
-      html = '<div class="summary">' + esc(summary) + "</div>" + (d ? d.html : "");
-    } else if (name === "Read") html = '<div class="summary">' + countLines(text) + " خط خوانده شد</div>";
-    else if (name === "Grep" || name === "Glob" || name === "LS") {
-      html = '<div class="summary">' + (/^No (files|matches)/i.test(text) ? "نتیجه‌ای پیدا نشد" : countLines(text) + " نتیجه پیدا شد") + "</div>";
-    } else if (name === "TodoWrite") html = todosHtml(input.todos);
-    else if (name === "WebFetch" || name === "WebSearch") html = '<div class="summary">انجام شد (' + text.length.toLocaleString() + " نویسه)</div>";
-    else if (AGENT_TOOLS[name]) html = previewLines(text.trim() || "انجام شد", 3);
-    else html = text.trim() ? previewLines(text.trim(), 3) : '<div class="summary">(بدون خروجی)</div>';
-    let r = t.el.querySelector(".result");
-    if (!r) {
-      r = document.createElement("div");
-      r.className = "result";
-      t.el.appendChild(r);
-    }
-    r.innerHTML = '<span class="elbow">⎿</span><div class="body">' + html + "</div>";
-    t.el.classList.remove("running");
-    t.el.classList.add(isError ? "error" : "done");
-    if (AGENT_TOOLS[name] && c.agents[id]) {
-      const a = c.agents[id];
-      a.status = isError ? "error" : "done";
-      a.ended = Date.now();
-      if (c === chat()) renderSubTabs();
-      if (G.view === "workloads") renderWorkloads();
-    }
-  }
-
-  // ==================================================================== permission prompts (CLI style)
-  function showPermission(c, p) {
-    const card = document.createElement("div");
-    card.className = "perm" + (p.guardRule ? " guarded" : "");
-    card.tabIndex = 0;
-    const input = p.input || {};
-    let title = "", body = "", question = "";
-    if (p.isEdit) {
-      const file = p.file || input.file_path || "";
-      title = p.newFile ? "ساخت فایل" : "ویرایش فایل";
-      body = '<div><span class="file" data-open="' + esc(file) + '">' + esc(relPath(file)) + "</span>" +
-        (p.hasDiff ? '<span class="stats"><span class="add">+' + p.added + '</span> <span class="rem">-' + p.removed + "</span></span>" +
-          ' <button data-perm="diff">مشاهده در Diff Viewer</button>' : "") + "</div>";
-      const d = editDiff(p.tool, input);
-      if (d) body += d.html;
-      question = p.newFile ? "آیا این فایل ساخته شود؟" : "آیا این تغییرات اعمال شود؟";
-    } else if (p.tool === "Bash") {
-      title = "دستور Bash";
-      body = "<pre>" + esc(input.command || "") + "</pre>" + (input.description ? '<div class="desc">' + esc(input.description) + "</div>" : "");
-      question = "آیا اجرا شود؟";
-    } else {
-      title = '<span dir="ltr">' + esc(displayName(p.tool)) + "</span>";
-      const summary = toolSummary(p.tool, input) || JSON.stringify(input, null, 2);
-      body = "<pre>" + esc(summary.length > 1500 ? summary.slice(0, 1500) + "…" : summary) + "</pre>";
-      question = "آیا اجازه داده شود؟";
-    }
-    if (p.guardRule) body = '<div class="guardnote">⛨ هشدار محافظ: ' + esc(p.guardText) + "</div>" + body;
-    const opts = [["allow", "بله"]];
-    if (!p.guardRule) opts.push(["always", p.isEdit ? "بله، و ویرایش‌ها را در این گفتگو دیگر نپرس" : "بله، و برای " + p.tool + " در این گفتگو دیگر نپرس"]);
-    opts.push(["deny", "خیر، و به Claude بگو چه کار متفاوتی بکند (esc)"]);
-    card.innerHTML = '<div class="ptitle">' + title + "</div>" + body + '<div class="q">' + question + "</div>" +
-      '<div class="opts">' + opts.map((o, i) => '<button class="opt' + (i === 0 ? " sel" : "") + '" data-perm="' + o[0] + '">' +
-        '<span class="cur">❯</span><span class="num">' + (i + 1) + ".</span><span>" + esc(o[1]) + "</span></button>").join("") + "</div>" +
-      '<input class="reason" placeholder="(اختیاری) به Claude بگویید به جای آن چه کند…" dir="auto">' +
-      '<div class="hint">کلیدهای ۱/۲/۳ یا ↑↓ و Enter · Esc برای رد</div>';
-    card.dataset.id = p.id;
-    c.perms[p.id] = card;
-    const t = c.tools[p.id];
-    const T = t ? t.T : c.main;
-    if (t) t.el.after(card);
-    else turnEl(T).appendChild(card);
-    c.statusText = "منتظر تأیید شما…";
-    if (c === chat()) {
-      setStatus(c.statusText);
-      scrollDown(T, true);
-      if (!inputEl.value.trim()) card.focus();
-    }
-  }
-
-  function resolvePermission(c, p) {
-    const card = c.perms[p.id];
-    if (!card) return;
-    delete c.perms[p.id];
-    card.classList.add("resolved");
-    const o = document.createElement("div");
-    const ok = p.outcome !== "denied";
-    o.className = "outcome " + (ok ? "allowed" : "denied");
-    o.innerHTML = '<span class="elbow">⎿</span><span></span>';
-    o.lastChild.textContent = p.outcome === "allowedModified" ? "پذیرفته شد (با ویرایش‌های شما)" : ok ? "اجازه داده شد" : "رد شد";
-    card.appendChild(o);
-    if (c.busy) chatStatus(c, "در حال کار…");
-    if (document.activeElement === card || document.activeElement === document.body) inputEl.focus();
-  }
-
-  function permAct(card, action) {
-    if (!card || card.classList.contains("resolved")) return;
-    const reason = (card.querySelector(".reason") || {}).value || "";
-    toIde({ type: "permission", id: card.dataset.id, action, reason });
-  }
-
-  function firstPendingCard() {
-    const c = chat();
-    if (!c) return null;
-    const ids = Object.keys(c.perms);
-    return ids.length ? c.perms[ids[0]] : null;
-  }
-
-  function permKey(card, e) {
-    const opts = [...card.querySelectorAll(".opt")];
-    const cur = opts.findIndex((o) => o.classList.contains("sel"));
-    const k = e.key;
-    const digit = { "1": 0, "2": 1, "3": 2, "۱": 0, "۲": 1, "۳": 2 }[k];
-    if (digit !== undefined && opts[digit]) {
-      e.preventDefault();
-      permAct(card, opts[digit].getAttribute("data-perm"));
-    } else if (k === "ArrowDown" || k === "ArrowUp") {
-      e.preventDefault();
-      const n = (cur + (k === "ArrowDown" ? 1 : -1) + opts.length) % opts.length;
-      opts.forEach((o, i) => o.classList.toggle("sel", i === n));
-    } else if (k === "Enter") {
-      e.preventDefault();
-      permAct(card, opts[Math.max(0, cur)].getAttribute("data-perm"));
-    } else if (k === "Escape") {
-      e.preventDefault();
-      permAct(card, "deny");
-    }
   }
 
   // ==================================================================== busy state / status line / info panel
@@ -713,11 +529,12 @@
     const c = chat();
     if (!c || !c.busy) return;
     $("spin").textContent = SPIN[spinI++ % SPIN.length];
-    const turnTok = Math.round(c.usage.turnOut + (c.usage.cur ? c.usage.cur.out : 0));
-    $("statusHint").textContent = "(" + Math.round((Date.now() - c.startedAt) / 1000) + "s · ↓ " + fmtNum(turnTok) + " توکن · esc برای توقف)";
+    $("statusHint").textContent = "(" + Math.round((Date.now() - c.startedAt) / 1000) + "s · ↓ ~" + fmtNum(Math.round(estTok(c.usage.liveChars))) +
+      tr(" tokens · esc to interrupt)", " توکن · esc برای توقف)");
   }, 120);
 
   function setBusy(c, b, text) {
+    if (c.busy === b && !text) return;
     c.busy = b;
     c.startedAt = b ? c.startedAt || Date.now() : 0;
     if (text) c.statusText = text;
@@ -732,8 +549,8 @@
     $("btnStop").classList.toggle("hidden", !b);
     $("status").classList.toggle("hidden", !b);
     $("infoState").classList.toggle("busy", b);
-    $("infoStateText").textContent = b ? "Running" : "Idle";
-    if (b) setStatus(c.statusText || "در حال فکر کردن…");
+    $("infoStateText").textContent = b ? tr("Running", "در حال اجرا") : tr("Idle", "آماده");
+    if (b) setStatus(c.statusText || thinking());
   }
 
   function setStatus(text) {
@@ -744,402 +561,224 @@
     if (c === chat()) setStatus(text);
   }
 
-  /** G.limits is keyed by the CLI's own label ("Current session", "Current week (Fable)", …). */
-  function limitLabel(k) {
-    if (k === "Current session") return "نشست فعلی";
-    if (/^Current week \(all models\)$/i.test(k)) return "هفتگی · همهٔ مدل‌ها";
-    const m = /^Current week \((.+)\)$/.exec(k);
-    if (m) return "هفتگی · " + m[1];
-    return k;
-  }
-  function rateKeyToLabel(k) {
-    if (k === "five_hour") return "Current session";
-    if (k === "seven_day") return "Current week (all models)";
-    const m = /^seven_day_(\w+)$/.exec(k);
-    return m ? "Current week (" + cap(m[1]) + ")" : k;
-  }
-  function setLimit(label, pct, resetsAt) {
-    const l = G.limits[label] || (G.limits[label] = {});
-    l.pct = pct;
-    if (resetsAt) l.resetsAt = resetsAt;
-  }
-  let usageTimer = 0;
-  /** Ask the IDE to run the local /usage command (free); at most once a minute unless forced. */
-  function requestUsage(force) {
-    if (!force && Date.now() - G.usageAt < 60000) {
-      if (!usageTimer) usageTimer = setTimeout(() => { usageTimer = 0; requestUsage(true); }, 60000 - (Date.now() - G.usageAt));
-      return;
-    }
-    G.usageAt = Date.now();
-    toIde({ type: "usage" });
-  }
-
   function renderInfo() {
     const c = chat();
     if (!c) return;
     const u = c.usage;
-    const pct = Math.min(100, Math.round((u.ctx / (u.window || 200000)) * 100));
-    $("infoCtx").textContent = pct + "%";
-    const bar = $("infoCtxBar");
-    bar.style.width = pct + "%";
-    bar.classList.toggle("high", pct >= 70);
-    $("infoOut").textContent = fmtNum(Math.round(liveOut(u)));
-    $("infoReason").textContent = fmtNum(Math.round(liveReason(u)));
-    $("infoCost").textContent = "$" + u.cost.toFixed(u.cost < 1 ? 4 : 2);
-    $("infoModel").textContent = c.model ? modelLabel(c.model) : G.model ? modelLabel(G.model) : "default";
-    $("infoCwd").textContent = tildePath(c.cwd || G.projectPath);
-    const a = G.account;
-    $("infoAccount").textContent = a && a.email ? a.email : a && a.loggedIn === false ? "وارد نشده" : "—";
-    $("infoPlan").textContent = a && (a.planTier || a.subscriptionType) ? "Claude " + cap(a.planTier || a.subscriptionType) : "—";
-    $("infoProvider").textContent = (a && a.apiProvider) || "—";
-    if (isGap()) return renderGapInfo(c);
-    $("infoLimits").innerHTML = Object.keys(G.limits).map((k) => {
-      const l = G.limits[k];
-      const p = Math.round(l.pct || 0);
-      return '<span class="lim"><span class="k">' + esc(limitLabel(k)) + '</span><span class="bar"><span style="width:' + p + '%"' +
-        (p >= 80 ? ' class="high"' : "") + '></span></span><span class="v">' + p + "%</span><span>" + esc(fmtReset(l.resetsAt)) + "</span></span>";
-    }).join("");
+    $("infoPrompt").textContent = fmtNum(u.prompt);
+    $("infoOut").textContent = fmtNum(u.completion + Math.round(estTok(u.liveChars)));
+    $("infoTotal").textContent = fmtNum(u.total) + (u.priced && u.cost > 0 ? " · " + fmtUsd(u.cost) : "");
+    $("infoModel").textContent = modelLabel(G.model);
+    $("infoCwd").textContent = tildePath(G.projectPath);
+    $("infoCtx").textContent = c.ctx && c.ctx.limit
+      ? "~" + fmtNum(c.ctx.tokens) + " / " + fmtNum(c.ctx.limit) + " (" + Math.round((100 * c.ctx.tokens) / c.ctx.limit) + "%)"
+      : "—";
+    $("infoKey").textContent = G.hasKey === null ? "—" : G.hasKey ? tr("set", "تنظیم شده") : tr("missing (Settings › Tools › GapGPT)", "تنظیم نشده (Settings › Tools › GapGPT)");
   }
 
-  // ==================================================================== GapGPT usage & limits
-  const usd = (n) => "$" + (n || 0).toFixed(n && n < 1 ? 4 : 2);
-  const per1M = (n) => (n === undefined || n === null ? "—" : "$" + (+n).toFixed(n < 0.1 ? 3 : 2));
-  function gapWindow() {
-    return (G.gap && G.gap.limits && G.gap.limits.contextWindow) || 0;
+  // ==================================================================== streamed reply
+  function onDelta(c, text) {
+    if (!c.busy) return;
+    const T = c.main;
+    if (!T.block) T.block = { el: newTextBlock(T), text: "" };
+    T.block.text += text;
+    c.usage.liveChars += text.length;
+    scheduleRender(T, T.block);
+    chatStatus(c, tr("Writing…", "در حال نوشتن…"));
+    scheduleInfo(c);
   }
-  function renderGapInfo(c) {
-    const g = G.gap || {};
-    const b = g.balance;
-    $("infoPlan").textContent = !b ? "—" : b.remaining !== undefined ? "اعتبار: " + usd(b.remaining) + " از " + usd(b.limit)
-      : b.used !== undefined ? "مصرف: " + usd(b.used) : "—";
-    $("infoPlan").dir = "auto";
-    const parts = [];
-    const lim = g.limits || {};
-    if (lim.contextWindow) parts.push(["Context", (lim.estimated ? "≈" : "") + fmtNum(lim.contextWindow)]);
-    if (lim.maxOutput) parts.push(["Max out", fmtNum(lim.maxOutput)]);
-    if (g.price) parts.push(["Price /1M", "in " + per1M(g.price.input) + (g.price.cached !== undefined ? " · cache " + per1M(g.price.cached) : "") + " · out " + per1M(g.price.output)]);
-    const t = (g.usage || []).find((x) => x.model === g.model);
-    if (t) parts.push(["این مدل", fmtNum(t.input + t.output) + " توکن · " + usd(t.cost)]);
-    const rl = g.rateLimit || {};
-    if (rl["remaining-requests"]) parts.push(["Req left", rl["remaining-requests"] + (rl["limit-requests"] ? "/" + rl["limit-requests"] : "")]);
-    if (rl["remaining-tokens"]) parts.push(["Tok left", fmtNum(+rl["remaining-tokens"]) + (rl["limit-tokens"] ? "/" + fmtNum(+rl["limit-tokens"]) : "")]);
-    // Each label / value is isolated with its own direction so mixed Persian/English never reorders.
-    let html = parts.map((p) => '<span class="lim"><span class="k" dir="auto">' + esc(p[0]) + '</span><span class="v" dir="auto">' + esc(p[1]) + "</span></span>").join("");
-    if (b && b.limit && b.used !== undefined) {
-      const p = Math.min(100, Math.round((b.used / b.limit) * 100));
-      html = '<span class="lim"><span class="k">Credit</span><span class="bar"><span style="width:' + p + '%"' + (p >= 80 ? ' class="high"' : "") +
-        '></span></span><span class="v">' + p + "%</span></span>" + html;
+
+  /** Renders the text of the reply now (instead of waiting for the next animation frame). */
+  function flushBlock(c) {
+    const T = c.main;
+    if (T.block) {
+      renderQueue.delete(T.block);
+      T.block.el.innerHTML = markdown(T.block.text);
+      T.block = null;
     }
-    $("infoLimits").innerHTML = html;
+    c.usage.liveChars = 0;
   }
-  function onGapStatus(p) {
-    G.gap = p;
-    const w = gapWindow();
-    Object.values(G.chats).forEach((c) => {
-      if (w && (!c.model || c.model === p.model)) c.usage.window = w;
-    });
-    renderInfo();
-    if (G.view === "session") renderSession();
-  }
-  function renderGapSession(c) {
-    const g = G.gap || {};
-    const lim = g.limits || {};
-    const pr = g.price;
-    const kv = (k, val) => '<span class="k">' + k + '</span><span class="v" title="' + esc(val) + '">' + esc(val || "—") + "</span>";
-    const meter = (label, used, total, note) => {
-      const p = total ? Math.min(100, (used / total) * 100) : 0;
-      return '<div class="meter"><div class="row1"><span>' + esc(label) + '</span><span class="pct">' + esc(note || p.toFixed(1) + "%") + "</span></div>" +
-        '<div class="track"><div class="fill' + (p >= 95 ? " full" : p >= 75 ? " warn" : "") + '" style="width:' + p + '%"></div></div></div>';
-    };
-    let html = '<div class="cardbox"><h4>مدل انتخابی · <span class="mono" dir="ltr">' + esc(g.model || G.model || "—") + "</span></h4>";
-    const u = c.usage;
-    if (lim.contextWindow) html += meter("Context این گفتگو", u.ctx || 0, lim.contextWindow, fmtInt(u.ctx || 0) + " / " + fmtInt(lim.contextWindow) +
-      (lim.estimated ? " (تخمینی)" : ""));
-    html += '<div class="kv">' +
-      kv("ارائه‌دهنده", pr ? pr.provider : "") +
-      kv("پنجرهٔ Context", lim.contextWindow ? (lim.estimated ? "≈ " : "") + fmtInt(lim.contextWindow) + " توکن" : "") +
-      kv("حداکثر خروجی", lim.maxOutput ? fmtInt(lim.maxOutput) + " توکن" : "اعلام نشده") +
-      kv("قیمت ورودی", pr ? per1M(pr.input) + " / 1M" : "نامشخص") +
-      kv("قیمت ورودی کش‌شده", pr && pr.cached !== undefined ? per1M(pr.cached) + " / 1M" : "—") +
-      kv("قیمت خروجی", pr ? per1M(pr.output) + " / 1M" : "نامشخص") +
-      "</div>" +
-      '<div class="reset" style="margin-top:6px;color:var(--muted);font-size:0.82em">قیمت‌ها از صفحهٔ قیمت‌گذاری GapGPT (' + esc(g.priceAsOf || "") + ")" +
-      (lim.estimated ? " · اندازهٔ context را API اعلام نکرده و تخمینی است" : "") + "</div></div>";
 
-    const b = g.balance;
-    const rl = g.rateLimit || {};
-    html += '<div class="cardbox"><h4>اعتبار و محدودیت‌های حساب</h4>';
-    if (b && b.limit && b.used !== undefined) html += meter("اعتبار مصرف‌شده", b.used, b.limit, usd(b.used) + " از " + usd(b.limit) + " · باقی‌مانده " + usd(b.remaining));
-    else if (b && b.used !== undefined) html += '<div class="kv">' + kv("مصرف (۱۰۰ روز اخیر)", usd(b.used)) + kv("سقف اعتبار", "بدون سقف") + "</div>";
-    else html += '<div class="empty-note">اطلاعات اعتبار از API دریافت نشد.</div>';
-    const rlKeys = Object.keys(rl);
-    if (rlKeys.length) html += '<h5>محدودیت نرخ (آخرین درخواست)</h5><div class="kv">' + rlKeys.map((k) => kv(k, rl[k])).join("") + "</div>";
-    html += '<div class="btnrow" style="margin-top:6px"><button class="pillbtn" id="gapRefresh">↻ به‌روزرسانی</button></div></div>';
-
-    const rows = g.usage || [];
-    const tot = rows.reduce((a, r) => ({ req: a.req + r.requests, inp: a.inp + r.input, cached: a.cached + r.cached, out: a.out + r.output, cost: a.cost + r.cost }),
-      { req: 0, inp: 0, cached: 0, out: 0, cost: 0 });
-    html += '<div class="cardbox"><h4>مصرف توکن به تفکیک مدل <span class="muted" style="font-weight:normal">از ' + esc(g.since || "") + "</span></h4>";
-    if (!rows.length) html += '<div class="empty-note">هنوز با موتور GapGPT پیامی فرستاده نشده است.</div>';
+  function onDone(c, p) {
+    const secs = c.startedAt ? ((Date.now() - c.startedAt) / 1000).toFixed(1) + "s" : "";
+    flushBlock(c);
+    closeTools(c);
+    const u = p.usage;
+    if (u) {
+      c.usage.prompt += u.prompt_tokens || 0;
+      c.usage.completion += u.completion_tokens || 0;
+      c.usage.total += u.total_tokens || (u.prompt_tokens || 0) + (u.completion_tokens || 0);
+      if (typeof u.cost_usd === "number") c.usage.cost += u.cost_usd;
+      else if (u.total_tokens) c.usage.priced = false;
+    }
+    if (p.stopped) notice(c, c.main, tr("⎿  Stopped.", "⎿  متوقف شد."), "warn");
     else {
-      const max = Math.max(...rows.map((r) => r.input + r.output), 1);
-      html += '<div class="md" dir="ltr"><table class="usage-table"><thead><tr><th>Model</th><th>Req</th><th>Input</th><th>Cached</th><th>Output</th><th>Cost</th><th></th></tr></thead><tbody>' +
-        rows.map((r) => "<tr" + (r.model === g.model ? ' class="cur"' : "") + "><td class=\"mono\">" + esc(r.model) + "</td><td>" + fmtInt(r.requests) + "</td><td>" + fmtNum(r.input) +
-          "</td><td>" + fmtNum(r.cached) + "</td><td>" + fmtNum(r.output) + "</td><td>" + (r.priced ? usd(r.cost) : "?") +
-          '</td><td><span class="ubar"><span style="width:' + ((r.input + r.output) / max) * 100 + '%"></span></span></td></tr>').join("") +
-        "<tr class=\"tot\"><td>Total</td><td>" + fmtInt(tot.req) + "</td><td>" + fmtNum(tot.inp) + "</td><td>" + fmtNum(tot.cached) + "</td><td>" + fmtNum(tot.out) +
-        "</td><td>" + usd(tot.cost) + "</td><td></td></tr></tbody></table></div>" +
-        '<div class="reset" style="color:var(--muted);font-size:0.82em">هزینه‌ها تخمین محلی بر اساس جدول قیمت‌اند؛ مبلغ قطعی را پنل GapGPT نشان می‌دهد.</div>';
+      const parts = [];
+      if (secs) parts.push(secs);
+      if (u && u.total_tokens) parts.push(fmtNum(u.total_tokens) + tr(" tokens", " توکن"));
+      if (parts.length) {
+        const m = document.createElement("div");
+        m.className = "meta";
+        m.textContent = "✻ " + parts.join(" · ");
+        if (u && typeof u.cost_usd === "number") {
+          const cs = document.createElement("span");
+          cs.className = "ltr";
+          cs.dir = "ltr";
+          cs.textContent = fmtUsd(u.cost_usd);
+          m.append(" · ", cs);
+        }
+        turnEl(c.main).appendChild(m);
+      }
     }
-    html += '<div class="btnrow" style="margin-top:6px"><button class="pillbtn" id="gapReset">پاک کردن آمار</button></div></div>';
-
-    html += '<div class="cardbox"><h4>نشست</h4><div class="kv">' + kv("موتور", "GapGPT API") + kv("آدرس", (G.account || {}).apiProvider) +
-      kv("پوشهٔ کاری", c.cwd || G.projectPath) + kv("شناسهٔ نشست", c.sessionId) +
-      kv("حالت دسترسی", (MODES.find((m) => m[0] === G.permissionMode) || MODES[0])[1]) +
-      kv("توکن‌های این گفتگو", fmtInt(Math.round(liveOut(u))) + " خروجی") + kv("هزینهٔ این گفتگو", usd(u.cost)) + "</div></div>";
-    const v = $("view-session");
-    v.innerHTML = html;
-    $("gapRefresh").addEventListener("click", () => toIde({ type: "gapgptStatus", chat: c.id, refresh: true }));
-    $("gapReset").addEventListener("click", () => toIde({ type: "gapgptUsageReset", chat: c.id }));
-  }
-
-  function trackUsage(c, msg) {
-    const u = msg && msg.usage;
-    if (!u) return;
-    const ctx = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
-    if (ctx > 0) c.usage.ctx = ctx;
-    if (c === chat()) renderInfo();
-  }
-
-  function onRateLimit(info) {
-    if (!info) return;
-    if (info.unifiedWindows) {
-      Object.keys(info.unifiedWindows).forEach((k) => {
-        const w = info.unifiedWindows[k];
-        setLimit(rateKeyToLabel(k), (w.utilization || 0) * 100, w.resetsAt);
-      });
-    } else if (info.rateLimitType) setLimit(rateKeyToLabel(info.rateLimitType), (info.utilization || 0) * 100, info.resetsAt);
-    renderInfo();
-    if (G.view === "session") renderSession();
-  }
-
-  // ==================================================================== Claude stream-json events
-  function targetFor(c, parentId) {
-    return parentId ? agentFor(c, parentId).T : c.main;
-  }
-
-  /** Rough token estimate for streamed text (~3.5 chars per token, Persian/code mixed). */
-  function estTok(s) {
-    return (s ? s.length : 0) / 3.5;
-  }
-
-  function handleStream(c, T, ev) {
-    const main = T === c.main;
-    const u = c.usage;
-    switch (ev.type) {
-      case "message_start":
-        if (ev.message && ev.message.id) T.streamed.add(ev.message.id);
-        T.blocks = {};
-        if (main) {
-          const mu = (ev.message && ev.message.usage) || {};
-          const ctx = (mu.input_tokens || 0) + (mu.cache_read_input_tokens || 0) + (mu.cache_creation_input_tokens || 0);
-          if (ctx > 0) u.ctx = ctx;
-          u.cur = { out: mu.output_tokens || 0, reason: 0 };
-          scheduleInfo(c);
-        }
-        break;
-      case "message_delta":
-        if (main && ev.usage) {
-          const out = ev.usage.output_tokens || 0;
-          const reason = (ev.usage.output_tokens_details && ev.usage.output_tokens_details.thinking_tokens) || 0;
-          u.turnOut += out;
-          u.turnReason += reason;
-          u.cur = null;
-          scheduleInfo(c);
-        }
-        break;
-      case "content_block_start": {
-        const cb = ev.content_block || {};
-        if (cb.type === "text") T.blocks[ev.index] = { type: "text", el: newTextBlock(T), text: cb.text || "" };
-        else if (cb.type === "tool_use") {
-          addTool(c, T, cb.id, cb.name, null);
-          T.blocks[ev.index] = { type: "tool" };
-        } else if (cb.type === "thinking") chatStatus(c, "در حال فکر کردن…");
-        break;
-      }
-      case "content_block_delta": {
-        const b = T.blocks[ev.index];
-        const d = ev.delta || {};
-        if (main && u.cur) {
-          const est = estTok(d.text || d.thinking || d.partial_json || "");
-          u.cur.out += est;
-          if (d.type === "thinking_delta") u.cur.reason += est;
-          scheduleInfo(c);
-        }
-        if (d.type === "thinking_delta") chatStatus(c, "در حال فکر کردن…");
-        if (b && b.type === "text" && d.type === "text_delta") {
-          b.text += d.text;
-          scheduleRender(T, b);
-          chatStatus(c, "در حال نوشتن…");
-        }
-        break;
-      }
+    c.main.turn = null;
+    c.failed = false;
+    setBusy(c, false);
+    if (c === chat()) {
+      renderInfo();
+      scrollDown(c.main);
     }
   }
 
-  function handleAssistant(c, T, msg) {
-    if (!msg || !Array.isArray(msg.content)) return;
-    if (T === c.main) trackUsage(c, msg);
-    const streamed = msg.id && T.streamed.has(msg.id);
-    msg.content.forEach((x) => {
-      if (x.type === "text" && !streamed) newTextBlock(T).innerHTML = markdown(x.text || "");
-      else if (x.type === "tool_use") {
-        addTool(c, T, x.id, x.name, x.input);
-        chatStatus(c, "در حال " + (TOOL_FA[x.name] || "اجرای " + x.name) + "…");
-      }
+  /** Tool rows left open when a run ends (stopped or failed) lose their spinner and approval box. */
+  function closeTools(c) {
+    c.main.el.querySelectorAll(".tool .approval").forEach((e) => e.remove());
+    c.main.el.querySelectorAll(".tool.running").forEach((e) => {
+      e.classList.remove("running");
+      e.classList.add("error");
     });
-    scrollDown(T);
+    c.tools = {};
   }
 
-  function handleToolResults(c, T, msg) {
-    if (!msg || !Array.isArray(msg.content)) return;
-    msg.content.forEach((x) => {
-      const t = x.type === "tool_result" && c.tools[x.tool_use_id];
-      if (t) setToolResult(c, x.tool_use_id, t, !!x.is_error, x.content);
-    });
-    chatStatus(c, "در حال فکر کردن…");
-    scrollDown(T);
-  }
+  // ==================================================================== agent tool calls
+  const FILE_TOOLS = { Read: 1, Edit: 1, Write: 1 };
 
-  function handleResult(c, ev) {
-    const u = ev.usage || {};
-    const cu = c.usage;
-    // The result carries the exact totals of the whole turn; they replace the live numbers.
-    cu.outTok += u.output_tokens || Math.round(cu.turnOut);
-    cu.reasoning += (u.output_tokens_details && u.output_tokens_details.thinking_tokens) || Math.round(cu.turnReason);
-    cu.turnOut = 0;
-    cu.turnReason = 0;
-    cu.cur = null;
-    if (typeof ev.total_cost_usd === "number") c.usage.cost += ev.total_cost_usd;
-    if (ev.modelUsage) Object.values(ev.modelUsage).forEach((m) => { if (m && m.contextWindow) c.usage.window = m.contextWindow; });
-    if (ev.session_id) c.sessionId = ev.session_id;
-    if (ev.is_error || (ev.subtype && ev.subtype !== "success")) notice(c, c.main, "خطا: " + (ev.result || ev.subtype || "نامشخص"), "error");
-    const parts = [];
-    if (ev.duration_ms) parts.push((ev.duration_ms / 1000).toFixed(1) + "s");
-    if (ev.num_turns) parts.push(ev.num_turns + " مرحله");
-    if (typeof ev.total_cost_usd === "number") parts.push("$" + ev.total_cost_usd.toFixed(4));
-    if (parts.length) {
-      const m = document.createElement("div");
-      m.className = "meta";
-      m.textContent = "✻ " + parts.join(" · ");
-      turnEl(c.main).appendChild(m);
+  function onToolStart(c, p) {
+    flushBlock(c);
+    const d = document.createElement("div");
+    d.className = "tool running";
+    d.innerHTML = '<div class="head"><span class="bullet">⏺</span><div class="call"><span class="name"></span><span class="arg"></span></div></div>';
+    d.querySelector(".name").textContent = p.title || "";
+    d.querySelector(".arg").textContent = p.label ? "(" + p.label + ")" : "";
+    d.querySelector(".call").title = (p.title || "") + " " + (p.label || "");
+    if (FILE_TOOLS[p.title] && p.label) {
+      const o = document.createElement("span");
+      o.className = "open";
+      o.textContent = tr("open", "باز کردن");
+      o.onclick = () => toIde({ type: "openFile", path: p.label, line: 0 });
+      d.querySelector(".call").appendChild(o);
     }
-    if (c === chat()) renderInfo();
-    requestUsage(false);
-    if (G.view === "session" && c === chat()) toIde({ type: "session", chat: c.id });
+    turnEl(c.main).appendChild(d);
+    (c.tools = c.tools || {})[p.id] = d;
+    chatStatus(c, tr("Running ", "در حال اجرای ") + (p.title || "tool") + "…");
     scrollDown(c.main);
   }
 
-  function onClaude(c, ev) {
-    const T = targetFor(c, ev.parent_tool_use_id);
-    switch (ev.type) {
-      case "system":
-        if (ev.subtype === "init") {
-          chatStatus(c, "در حال فکر کردن…");
-          c.model = ev.model || c.model;
-          c.cwd = ev.cwd || c.cwd;
-          c.version = ev.claude_code_version || c.version;
-          if (Array.isArray(ev.skills)) c.activeSkills = ev.skills;
-          if (Array.isArray(ev.plugins)) c.pluginPaths = ev.plugins.map((p) => p.path).filter(Boolean);
-          if (G.view === "skills" && c === chat()) renderSkills();
-          if (ev.session_id) c.sessionId = ev.session_id;
-          if (!c.connected && ev.backend === "gapgpt") {
-            c.connected = true;
-            notice(c, c.main, "✓ آماده — GapGPT API · " + (ev.model || ""), "");
-          }
-          if (!c.connected) {
-            c.connected = true;
-            const mcp = (ev.mcp_servers || []).find((m) => m.name === "gapgpt");
-            notice(c, c.main, "✓ آماده — Claude Code" + (mcp && mcp.status === "connected" ? " به IDE متصل شد" : " اجرا شد"), "");
-          }
-          if (c === chat()) renderInfo();
-        }
-        break;
-      case "rate_limit_event":
-        onRateLimit(ev.rate_limit_info);
-        break;
-      case "stream_event":
-        handleStream(c, T, ev.event || {});
-        break;
-      case "assistant":
-        handleAssistant(c, T, ev.message);
-        break;
-      case "user":
-        handleToolResults(c, T, ev.message);
-        break;
-      case "result":
-        handleResult(c, ev);
-        break;
+  function onToolApproval(c, p) {
+    const d = c.tools && c.tools[p.id];
+    if (!d) return;
+    const box = document.createElement("div");
+    box.className = "approval";
+    const isPlan = p.kind === "plan";
+    if (isPlan) {
+      const md = document.createElement("div");
+      md.className = "plan md";
+      md.innerHTML = markdown(p.preview || "");
+      box.appendChild(md);
+    } else if (p.preview) {
+      const pre = document.createElement("pre");
+      pre.className = "preview";
+      String(p.preview).split("\n").forEach((line) => {
+        const ln = document.createElement("div");
+        if (line.startsWith("+ ")) ln.className = "add";
+        else if (line.startsWith("- ")) ln.className = "del";
+        else if (line.startsWith("$ ")) ln.className = "cmd";
+        ln.textContent = line || " ";
+        pre.appendChild(ln);
+      });
+      box.appendChild(pre);
     }
+    const isCmd = p.kind === "command";
+    const isMcp = p.kind === "mcp";
+    const q = document.createElement("div");
+    q.className = "q";
+    q.dir = uiDir();
+    q.textContent = isPlan ? tr("Would you like to proceed with this plan?", "با این طرح ادامه بدهیم؟")
+      : isMcp ? tr("Allow this MCP tool call?", "این فراخوانی ابزار MCP مجاز است؟")
+      : isCmd ? tr("Run this command?", "این دستور اجرا شود؟") : tr("Apply this change?", "این تغییر اعمال شود؟");
+    box.appendChild(q);
+    const row = document.createElement("div");
+    row.className = "btnrow";
+    row.dir = uiDir();
+    const decide = (decision) => {
+      toIde({ type: "toolDecision", chat: c.id, id: p.id, decision });
+      box.remove();
+      chatStatus(c, decision === "deny" ? thinking() : tr("Running…", "در حال اجرا…"));
+    };
+    const btn = (label, cls, decision) => {
+      const b = document.createElement("button");
+      b.className = cls;
+      b.textContent = label;
+      b.onclick = () => decide(decision);
+      row.appendChild(b);
+      return b;
+    };
+    const first = btn(isPlan ? tr("Yes, start", "بله، شروع کن") : tr("Allow", "اجازه"), "primary", "allow");
+    btn(isPlan ? tr("Yes, and auto-accept edits", "بله، و ویرایش‌ها را خودکار بپذیر")
+      : isMcp ? tr("Always allow this server (this session)", "همیشه اجازه برای این سرور (این نشست)")
+      : isCmd ? tr("Always allow commands (this session)", "همیشه اجازهٔ اجرای دستور (این نشست)")
+      : tr("Always allow edits (this session)", "همیشه اجازهٔ ویرایش (این نشست)"), "pillbtn", "always");
+    btn(isPlan ? tr("No, keep planning", "نه، ادامهٔ برنامه‌ریزی") : tr("Deny", "رد"), "pillbtn", "deny");
+    if (p.hasDiff) {
+      const v = document.createElement("button");
+      v.className = "pillbtn";
+      v.textContent = tr("View diff", "نمایش diff");
+      v.onclick = () => toIde({ type: "showDiff", chat: c.id, id: p.id });
+      row.appendChild(v);
+    }
+    box.appendChild(row);
+    d.appendChild(box);
+    chatStatus(c, tr("Waiting for your approval…", "در انتظار تأیید شما…"));
+    scrollDown(c.main, true);
+    if (c === chat()) first.focus();
   }
 
-  // ==================================================================== mode / model / effort / context chip
-  const MODES = [
-    ["default", "هر بار بپرس", "برای هر ویرایش و دستور اجازه گرفته می‌شود"],
-    ["acceptEdits", "پذیرش خودکار ویرایش‌ها", "ویرایش فایل‌ها بدون پرسش؛ دستورها با پرسش"],
-    ["plan", "حالت برنامه‌ریزی", "فقط بررسی و برنامه؛ هیچ تغییری اعمال نمی‌شود"],
-    ["bypassPermissions", "بدون محدودیت", "همه چیز بدون پرسش (خطرناک — محافظ هم کار نمی‌کند)"],
-    ["dontAsk", "نپرس", "هر چه نیاز به اجازه دارد خودکار رد می‌شود"],
-    ["auto", "خودکار", "Claude خودش دربارهٔ اجازه‌ها تصمیم می‌گیرد"],
-  ];
-  // Aliases always resolve to the newest version of a family.
-  const MODELS = [
-    ["", "پیش‌فرض", "مدل پیش‌فرض حساب شما"],
-    ["opus", "Opus (آخرین نسخه)", "قوی‌ترین؛ برای سخت‌ترین و طولانی‌ترین کارها"],
-    ["sonnet", "Sonnet (آخرین نسخه)", "بهترین برای کارهای روزمره و پیچیده"],
-    ["haiku", "Haiku (آخرین نسخه)", "سریع‌ترین؛ برای پاسخ‌های کوتاه و کارهای ساده"],
-    ["fable", "Fable (آخرین نسخه)", "آخرین مدل خانوادهٔ Fable"],
-    ["opusplan", "Opus Plan", "Opus برای برنامه‌ریزی، Sonnet برای اجرا"],
-    ["opus[1m]", "Opus · 1M context", "context یک میلیون توکنی"],
-    ["sonnet[1m]", "Sonnet · 1M context", "context یک میلیون توکنی"],
-    ["fable[1m]", "Fable · 1M context", "context یک میلیون توکنی"],
-  ];
-  // Specific versions — the Claude model IDs served by GapGPT (gapgpt.app/platform-v2/pricing).
-  const MODEL_FAMILIES = [
-    ["Opus", [["claude-opus-5-5", "Opus 5.5"], ["claude-opus-5", "Opus 5"], ["claude-opus-4-8", "Opus 4.8"], ["claude-opus-4-7", "Opus 4.7"],
-      ["claude-opus-4-6", "Opus 4.6"], ["claude-opus-4-5", "Opus 4.5"]]],
-    ["Sonnet", [["claude-sonnet-5-5", "Sonnet 5.5"], ["claude-sonnet-5", "Sonnet 5"], ["claude-sonnet-4-6", "Sonnet 4.6"],
-      ["claude-sonnet-4-5", "Sonnet 4.5"]]],
-    ["Haiku", [["claude-haiku-5-5", "Haiku 5.5"], ["claude-haiku-4-5", "Haiku 4.5"]]],
-    ["Fable", [["claude-fable-5-2", "Fable 5.2"], ["claude-fable-5-1", "Fable 5.1"], ["claude-fable-5", "Fable 5"]]],
-  ];
-  const ALL_MODELS = MODELS.concat(...MODEL_FAMILIES.map((f) => f[1]));
-  const EFFORTS = [["", "Default"], ["low", "Low"], ["medium", "Medium"], ["high", "High"], ["xhigh", "XHigh"], ["max", "Max"]];
-
-  function setMode(m, notify) {
-    G.permissionMode = m || "default";
-    const e = MODES.find((x) => x[0] === G.permissionMode) || MODES[0];
-    const lbl = $("ddMode").querySelector(".lbl");
-    lbl.textContent = e[1];
-    lbl.className = "lbl " + e[0];
-    if (notify) toIde({ type: "setMode", value: G.permissionMode });
+  function onToolEnd(c, p) {
+    const d = c.tools && c.tools[p.id];
+    if (!d) return;
+    const ap = d.querySelector(".approval");
+    if (ap) ap.remove();
+    d.classList.remove("running");
+    d.classList.add(p.ok ? "done" : "error");
+    const r = document.createElement("div");
+    r.className = "result";
+    r.innerHTML = '<span class="elbow">⎿</span><div class="body"><div class="summary"></div></div>';
+    r.querySelector(".summary").textContent = p.summary || "";
+    if (p.detail) {
+      const pre = document.createElement("pre");
+      pre.textContent = p.detail;
+      r.querySelector(".body").appendChild(pre);
+    }
+    d.appendChild(r);
+    chatStatus(c, thinking());
+    scrollDown(c.main);
   }
+
+  function onError(c, text) {
+    flushBlock(c);
+    closeTools(c);
+    notice(c, c.main, text, "error");
+    c.main.turn = null;
+    c.failed = true;
+    setBusy(c, false);
+    if (c === chat()) renderInfo();
+  }
+
+  // ==================================================================== model / context chip
   function setModel(m, notify) {
     G.model = m || "";
-    const e = !isGap() && MODELS.find((x) => x[0] === G.model);
-    $("ddModel").querySelector(".lbl").textContent = isGap() ? G.model || "—" : e ? e[1].replace(" (آخرین نسخه)", "") : modelLabel(G.model);
+    $("ddModel").querySelector(".lbl").textContent = modelLabel(G.model);
     if (notify) toIde({ type: "setModel", value: G.model });
     renderInfo();
-  }
-  function setEffort(v, notify) {
-    G.effort = v || "";
-    const e = EFFORTS.find((x) => x[0] === G.effort) || EFFORTS[0];
-    $("ddEffort").querySelector(".lbl").textContent = e[1];
-    if (notify) toIde({ type: "setEffort", value: G.effort });
-  }
-  function setGuardUi() {
-    $("btnGuard").classList.toggle("on", G.guardEnabled);
-    $("btnGuard").title = "محافظ (Guard): " + (G.guardEnabled ? "فعال" : "غیرفعال");
   }
 
   function renderCtx() {
@@ -1151,7 +790,8 @@
     const name = x.file.split("/").pop();
     const lines = x.endLine - x.startLine + 1;
     chip.textContent = "⧉ " + name + (x.hasSelection ? ":" + x.startLine + (lines > 1 ? "-" + x.endLine : "") : "");
-    chip.title = x.file + " — همراه پیام فرستاده " + (c.shareCtx ? "می‌شود" : "نمی‌شود") + ". برای تغییر کلیک کنید.";
+    chip.title = x.file + tr(" — " + (c.shareCtx ? "is" : "is not") + " sent with your message. Click to toggle.",
+      " — همراه پیام فرستاده " + (c.shareCtx ? "می‌شود" : "نمی‌شود") + ". برای تغییر کلیک کنید.");
     chip.classList.toggle("off", !c.shareCtx);
   }
 
@@ -1166,10 +806,17 @@
     items.forEach((it) => {
       if (it.sep) return m.insertAdjacentHTML("beforeend", '<div class="msep"></div>');
       if (it.header) return m.insertAdjacentHTML("beforeend", '<div class="mh">' + esc(it.header) + "</div>");
+      if (it.error) {
+        const d = document.createElement("div");
+        d.className = "merr";
+        d.dir = textDir(it.error);
+        d.textContent = it.error;
+        return m.appendChild(d);
+      }
       if (it.input) {
         const inp = document.createElement("input");
         inp.placeholder = it.input.placeholder || "";
-        inp.dir = "auto";
+        inp.dir = uiDir();
         inp.addEventListener("input", () => it.input.onInput && it.input.onInput(inp.value));
         inp.addEventListener("keydown", (e) => {
           if (e.key === "Enter" && it.input.onEnter) it.input.onEnter(inp.value);
@@ -1188,10 +835,18 @@
     m.classList.remove("hidden");
     const r = anchor.getBoundingClientRect();
     const w = m.offsetWidth;
-    let right = window.innerWidth - r.right;
-    if (window.innerWidth - right - w < 4) right = Math.max(4, window.innerWidth - w - 4);
-    m.style.right = right + "px";
-    m.style.left = "auto";
+    m.dir = uiDir();
+    if (G.lang === "fa") {
+      let right = window.innerWidth - r.right;
+      if (window.innerWidth - right - w < 4) right = Math.max(4, window.innerWidth - w - 4);
+      m.style.right = right + "px";
+      m.style.left = "auto";
+    } else {
+      let left = r.left;
+      if (left + w > window.innerWidth - 4) left = Math.max(4, window.innerWidth - w - 4);
+      m.style.left = left + "px";
+      m.style.right = "auto";
+    }
     if (r.top > window.innerHeight / 3) {
       m.style.top = "auto";
       m.style.bottom = window.innerHeight - r.top + 6 + "px";
@@ -1208,8 +863,6 @@
     b.querySelector(".lt").textContent = it.label;
     if (it.desc) b.querySelector(".md2").textContent = it.desc;
     if (it.family) b.dataset.modelFamily = it.family;
-    if (it.mid) b.dataset.mid = it.mid;
-    if (it.famOf) b.dataset.famOf = it.famOf;
     b.addEventListener("click", (e) => {
       if (it.keepOpen) return; // handled by the document click listener (re-renders the menu)
       e.stopPropagation();
@@ -1224,132 +877,84 @@
     menuAnchor = null;
   }
 
-  function menuAnchorFor(id) {
-    return $(id);
-  }
-  const BACKENDS = [
-    ["gapgpt", "GapGPT API", "همهٔ مدل‌های گپ‌جی‌پی‌تی (GPT، Claude، Gemini، DeepSeek و …) — مستقل از Claude Code"],
-    ["claude", "Claude Code CLI", "اجرای Claude Code نصب‌شده با حساب و تنظیمات خودش"],
-  ];
-  function setBackend(b) {
-    if (b === G.backend) return;
-    G.backend = b;
-    toIde({ type: "setBackend", value: b }); // the IDE answers with a fresh "init"
-  }
-  function backendItems() {
-    return [{ header: "موتور پاسخ‌گویی" }].concat(BACKENDS.map((b) => ({
-      label: b[1], desc: b[2], checked: G.backend === b[0], onClick: () => setBackend(b[0]),
-    })), [{ sep: true }]);
-  }
-  /** Groups GapGPT model IDs by vendor (owned_by is not reliable across proxied providers). */
-  function gapFamily(m) {
-    const id = m.id.toLowerCase();
-    const rules = [
-      [/^claude/, "Anthropic · Claude"], [/^(gpt|o\d|chatgpt|codex|davinci|babbage|text-|tts|whisper|dall-e)/, "OpenAI"],
-      [/^(gemini|gemma|imagen|veo)/, "Google"], [/^deepseek/, "DeepSeek"], [/^grok/, "xAI · Grok"], [/^(qwen|qwq)/, "Qwen"],
-      [/llama/, "Meta · Llama"], [/^(mistral|mixtral|codestral|magistral|devstral)/, "Mistral"], [/^(kimi|moonshot)/, "Moonshot · Kimi"],
-      [/^(glm|zhipu)/, "Zhipu · GLM"], [/^(minimax|abab)/, "MiniMax"],
-    ];
-    const r = rules.find((x) => x[0].test(id));
-    return r ? r[1] : m.owner ? cap(m.owner) : "سایر";
-  }
-  /** Filters the open model menu in place (re-rendering would steal focus from the search box). */
-  function filterModelMenu(q) {
-    G.modelFilter = q;
-    q = q.trim().toLowerCase();
-    const visible = {};
-    document.querySelectorAll("#menu [data-mid]").forEach((el) => {
-      const hit = q ? el.dataset.mid.toLowerCase().includes(q) : G.modelOpen[el.dataset.famOf];
-      el.style.display = hit ? "" : "none";
-      if (hit || !q) visible[el.dataset.famOf] = true;
-    });
-    document.querySelectorAll("#menu [data-model-family]").forEach((el) => {
-      el.style.display = visible[el.dataset.modelFamily] ? "" : "none";
-    });
-  }
-  function gapModelMenu(anchor) {
-    const items = backendItems();
-    if (!G.gapModels) {
-      items.push({ label: G.gapModelsError ? "✗ " + G.gapModelsError : "در حال دریافت فهرست مدل‌ها…", cls: "fam" });
-      if (G.gapModelsError) items.push({ label: "تلاش دوباره", onClick: () => { G.gapModelsError = ""; toIde({ type: "gapgptModels", refresh: true }); } });
-    } else {
-      items.push({ input: { placeholder: "جستجوی مدل (" + G.gapModels.length + " مدل)…", focus: true, onInput: filterModelMenu,
-        onEnter: (v) => {
-          v = v.trim();
-          if (!v) return;
-          const hit = G.gapModels.find((m) => m.id === v) || G.gapModels.find((m) => m.id.toLowerCase().includes(v.toLowerCase()));
-          setModel(hit ? hit.id : v, true);
-          closeMenu();
-        } } });
-      const fams = {};
-      G.gapModels.forEach((m) => (fams[gapFamily(m)] = fams[gapFamily(m)] || []).push(m));
-      Object.keys(fams).sort((a, b) => (a.startsWith("Anthropic") ? -1 : b.startsWith("Anthropic") ? 1 : a.localeCompare(b))).forEach((fam) => {
-        const list = fams[fam];
-        const open = G.modelOpen[fam] !== undefined ? G.modelOpen[fam] : list.some((m) => m.id === G.model);
-        G.modelOpen[fam] = open;
-        items.push({ label: (open ? "▾ " : "◂ ") + fam + "  (" + list.length + ")", cls: "fam", family: fam, keepOpen: true });
-        list.forEach((m) => items.push({ label: m.id, cls: "ver", mid: m.id, famOf: fam, checked: G.model === m.id, onClick: () => setModel(m.id, true) }));
-      });
-      items.push({ sep: true }, { label: "↻ به‌روزرسانی فهرست مدل‌ها", onClick: () => { G.gapModels = null; toIde({ type: "gapgptModels", refresh: true }); } });
-    }
-    showMenu(anchor, items);
-    const inp = $("menu").querySelector("input");
-    if (inp && G.modelFilter) inp.value = G.modelFilter;
-    filterModelMenu(G.modelFilter || "");
-  }
   function modelMenu(anchor) {
-    if (isGap()) return gapModelMenu(anchor);
-    const items = backendItems().concat(MODELS.map((m) => ({ label: m[1], desc: m[2], checked: G.model === m[0], onClick: () => setModel(m[0], true) })));
-    items.push({ sep: true }, { header: "انتخاب نسخهٔ مشخص" });
-    MODEL_FAMILIES.forEach(([fam, versions]) => {
-      const hasCurrent = versions.some((v) => v[0] === G.model);
-      const open = G.modelOpen[fam] !== undefined ? G.modelOpen[fam] : hasCurrent;
-      G.modelOpen[fam] = open;
-      items.push({ label: (open ? "▾ " : "◂ ") + fam + "  (" + versions.length + " نسخه)", cls: "fam", family: fam, keepOpen: true });
-      if (open) versions.forEach((v) => items.push({ label: v[1], desc: v[0], cls: "ver", checked: G.model === v[0], onClick: () => setModel(v[0], true) }));
-    });
-    if (G.model && !ALL_MODELS.some((m) => m[0] === G.model)) items.push({ label: G.model, checked: true });
-    items.push({ sep: true }, { header: "مدل دیگر" }, {
-      input: {
-        placeholder: "شناسهٔ مدل، مثلاً claude-opus-5-5 و Enter",
-        onEnter: (v) => {
-          if (!v.trim()) return;
-          setModel(v.trim(), true);
-          closeMenu();
+    const list = G.models.length ? G.models.slice() : ["GPT-5.2-Pro"];
+    if (G.model && list.indexOf(G.model) < 0) list.unshift(G.model);
+    let shown = list;
+    const render = (q) => {
+      const box = $("modelList");
+      if (!box) return;
+      q = (q || "").trim().toLowerCase();
+      shown = q ? list.filter((m) => m.toLowerCase().indexOf(q) >= 0) : list;
+      box.innerHTML = "";
+      shown.forEach((m) => box.appendChild(menuItem({ label: m, checked: G.model === m, onClick: () => setModel(m, true) })));
+      if (!shown.length) box.insertAdjacentHTML("beforeend", '<div class="mh">' + esc(tr("No match — Enter uses the typed name", "موردی نیست — Enter همین نام را استفاده می‌کند")) + "</div>");
+    };
+    const items = [
+      {
+        input: {
+          placeholder: tr("Search or type a model name, then Enter", "جستجو یا نام مدل و Enter"),
+          focus: true,
+          onInput: render,
+          onEnter: (v) => {
+            const name = shown.length === 1 ? shown[0] : v.trim();
+            if (!name) return;
+            setModel(name, true);
+            closeMenu();
+          },
         },
+      },
+      { slot: "modelList" },
+      { sep: true },
+    ];
+    if (G.modelsError) items.push({ error: G.modelsError });
+    items.push({
+      label: G.modelsLoading ? tr("Loading models…", "در حال دریافت مدل‌ها…") : tr("Refresh model list from GapGPT", "به‌روزرسانی فهرست مدل‌ها از گپ‌جی‌پی‌تی"),
+      desc: G.models.length ? tr(G.models.length + " chat models", G.models.length + " مدل چت") : "",
+      onClick: () => {
+        fetchModels();
+        modelMenu(anchor); // keep the menu open; it is re-rendered when the list arrives
       },
     });
     showMenu(anchor, items);
+    render("");
+    // First open with no list yet: load it once in the background.
+    if (!G.models.length && !G.modelsLoading && !G.modelsError && G.hasKey !== false) {
+      fetchModels();
+      modelMenu(anchor);
+    }
   }
-  function modeMenu(anchor) {
-    showMenu(anchor, MODES.map((m) => ({ label: m[1], desc: m[2], checked: G.permissionMode === m[0], onClick: () => setMode(m[0], true) })));
-  }
-  function effortMenu(anchor) {
-    showMenu(anchor, EFFORTS.map((e) => ({ label: e[1], checked: G.effort === e[0], onClick: () => setEffort(e[0], true) })));
+  function fetchModels() {
+    if (G.modelsLoading) return;
+    G.modelsLoading = true;
+    G.modelsError = "";
+    toIde({ type: "fetchModels" });
   }
   function moreMenu(anchor) {
     showMenu(anchor, [
-      { label: "دنبال کردن خودکار اسکرول", checked: G.autoFollow, onClick: () => { G.autoFollow = !G.autoFollow; toIde({ type: "setAutoFollow", value: G.autoFollow }); } },
-      { label: "جستجو در گفتگو", onClick: openSearch },
-      { label: "پاک کردن این گفتگو (/clear)", onClick: () => chat() && clearChat(chat()) },
+      { label: tr("Auto-scroll", "دنبال کردن خودکار اسکرول"), checked: G.autoFollow, onClick: () => { G.autoFollow = !G.autoFollow; toIde({ type: "setAutoFollow", value: G.autoFollow }); } },
+      { label: tr("Search in chat", "جستجو در گفتگو"), onClick: openSearch },
+      { label: tr("Clear this chat (/clear)", "پاک کردن این گفتگو (/clear)"), onClick: () => chat() && clearChat(chat()) },
+      { label: tr("Resume a conversation (/resume)", "ادامهٔ یک گفتگو (/resume)"), onClick: () => setTimeout(openResume, 0) },
+      { label: tr("Usage & balance (/usage)", "مصرف و اعتبار حساب (/usage)"), onClick: () => send("/usage", false) },
+      { label: tr("Language: فارسی", "زبان: English"), onClick: () => setLang(G.lang === "fa" ? "en" : "fa", true) },
       { sep: true },
-      { label: "آسیب‌پذیری وابستگی‌ها", onClick: () => switchView("vulns") },
-      { label: "لاگ پلاگین", onClick: () => switchView("log") },
-      { label: "تنظیمات", onClick: () => toIde({ type: "settings" }) },
+      { label: tr("Import rules & skills", "کپی قوانین و اسکیل‌ها"), onClick: () => { switchView("rules"); requestImportScan(); } },
+      { label: tr("Plugin log", "لاگ پلاگین"), onClick: () => switchView("log") },
+      { label: tr("Settings", "تنظیمات"), onClick: () => toIde({ type: "settings" }) },
       { sep: true },
-      { label: "بستن این گفتگو", onClick: () => closeChat(G.active) },
-      { label: "خروج از حساب Claude", onClick: () => toIde({ type: "logout" }) },
+      { label: tr("Close this chat", "بستن این گفتگو"), onClick: () => closeChat(G.active) },
     ]);
   }
   let attachFilter = "";
   function attachMenu(anchor) {
     attachFilter = "";
     showMenu(anchor, [
-      { input: { placeholder: "جستجوی فایل‌های اخیر…", focus: true, onInput: (v) => { attachFilter = v.toLowerCase(); renderRecent(); } } },
-      { label: "فایل‌ها…", onClick: () => toIde({ type: "attach", kind: "files" }) },
-      { label: "پوشه…", onClick: () => toIde({ type: "attach", kind: "dir" }) },
-      { label: "تصویر…", onClick: () => toIde({ type: "attach", kind: "image" }) },
-      { header: "فایل‌های اخیر" },
+      { input: { placeholder: tr("Search recent files…", "جستجوی فایل‌های اخیر…"), focus: true, onInput: (v) => { attachFilter = v.toLowerCase(); renderRecent(); } } },
+      { label: tr("Files…", "فایل‌ها…"), onClick: () => toIde({ type: "attach", kind: "files" }) },
+      { label: tr("Folder…", "پوشه…"), onClick: () => toIde({ type: "attach", kind: "dir" }) },
+      { label: tr("Image…", "تصویر…"), onClick: () => toIde({ type: "attach", kind: "image" }) },
+      { header: tr("Recent files", "فایل‌های اخیر") },
       { slot: "recentSlot" },
     ]);
     renderRecent();
@@ -1387,7 +992,7 @@
     const box = $("mention");
     const m = G.mention;
     box.classList.remove("hidden");
-    if (!m.items.length) return (box.innerHTML = '<div class="none" dir="rtl">فایلی پیدا نشد</div>');
+    if (!m.items.length) return (box.innerHTML = '<div class="none" dir="' + uiDir() + '">' + tr("No files found", "فایلی پیدا نشد") + "</div>");
     box.innerHTML = m.items.map((path, i) => {
       const k = path.lastIndexOf("/");
       return '<div class="item' + (i === m.idx ? " active" : "") + '" data-idx="' + i + '">' + esc(path.slice(k + 1)) +
@@ -1438,7 +1043,7 @@
     if (!sl.open) return box.classList.add("hidden");
     box.classList.remove("hidden");
     box.innerHTML = sl.items.map((c, i) => '<div class="item' + (i === sl.idx ? " active" : "") + '" data-idx="' + i + '">/' + esc(c.name) +
-      '<span class="desc">' + esc(c.description || "") + '</span><span class="src">' + esc(c.source === "builtin" ? "" : c.source) + "</span></div>").join("");
+      '<span class="desc" dir="' + textDir(c.description, "ltr") + '">' + esc(c.description || "") + '</span><span class="src">' + esc(c.source === "builtin" ? "" : c.source) + "</span></div>").join("");
     const act = box.querySelector(".active");
     if (act) act.scrollIntoView({ block: "nearest" });
   }
@@ -1465,37 +1070,54 @@
   }
   function renderView() {
     switch (G.view) {
-      case "workloads":
-        return renderWorkloads();
       case "git":
         renderGit();
         return toIde({ type: "git" });
-      case "guard":
-        renderGuard();
-        return toIde({ type: "guard" });
       case "log":
         renderLogView();
         return toIde({ type: "log" });
-      case "vulns":
-        renderVulns();
-        if (!G.vulnInv) toIde({ type: "vulnInventory" });
-        return;
-      case "session": {
-        const c = chat();
-        renderSession();
-        requestUsage(false);
-        if (c) toIde({ type: "session", chat: c.id });
-        return;
-      }
-      case "skills": {
-        const c = chat();
+      case "skills":
         renderSkills();
-        return toIde({ type: "skills", pluginPaths: (c && c.pluginPaths) || [] });
-      }
+        return toIde({ type: "skills" });
       case "rules":
         renderRules();
         return toIde({ type: "rules" });
     }
+  }
+
+  // ---------------------------------------------------------------- import rules & skills
+  function requestImportScan() {
+    G.importPreview = null;
+    G.importNote = tr("Looking for rules and skills…", "در حال جست‌وجوی قوانین و اسکیل‌ها…");
+    refreshImportUi();
+    toIde({ type: "scanInstructions" });
+  }
+  function refreshImportUi() {
+    if (G.view === "skills") renderSkills();
+    else if (G.view === "rules") renderRules();
+  }
+  const KIND_LABEL = {
+    rule: ["Rule", "قانون"], skill: ["Skill", "اسکیل"], command: ["Command", "دستور"], agent: ["Agent", "عامل"], memory: ["Instructions", "دستورالعمل"],
+  };
+  function importHtml() {
+    const p = G.importPreview;
+    let html = '<div class="cardbox"><h4>' + tr("Import rules & skills", "کپی قوانین و اسکیل‌ها") + '</h4><div class="muted">' +
+      tr('Copies existing rules and skills from other AI tools\' folders into <span class="mono ltr">.gapgpt</span>. The originals are not changed, so those tools keep working. You see the list first.',
+        'قوانین و اسکیل‌های موجود در پوشه‌های ابزارهای هوش مصنوعی دیگر را در <span class="mono ltr">.gapgpt</span> کپی می‌کند. فایل‌های اصلی دست نمی‌خورند و آن ابزارها به کارشان ادامه می‌دهند. ابتدا فهرست را می‌بینید.') + "</div>";
+    if (p && p.items.length) {
+      html += '<div class="rows">' + p.items.map((x) => {
+        const k = KIND_LABEL[x.kind];
+        return '<div class="r"><span class="tag">' + esc(k ? tr(k[0], k[1]) : x.kind) + '</span><span class="grow"><span class="code">' + esc(x.name) +
+          '</span><span class="sub mono ltr">' + esc(x.source) + " → " + esc(x.target) + "</span></span></div>";
+      }).join("") + "</div>" +
+        '<div class="btnrow"><button class="primary" data-import-confirm="1">' + tr("Copy " + p.items.length + " item(s)", "کپی " + p.items.length + " مورد") + "</button>" +
+        '<button class="pillbtn" data-import-cancel="1">' + tr("Cancel", "لغو") + "</button></div>";
+    } else {
+      if (p) html += '<div class="empty-note">' + tr("Nothing new to import was found.", "چیز تازه‌ای برای کپی پیدا نشد.") + "</div>";
+      html += '<div class="btnrow"><button class="primary" data-import-scan="1">' + tr("Import rules & skills", "کپی قوانین و اسکیل‌ها") + "</button></div>";
+    }
+    if (G.importNote) html += '<div class="notice" dir="' + textDir(G.importNote) + '">' + esc(G.importNote) + "</div>";
+    return html + "</div>";
   }
 
   // ---------------------------------------------------------------- skills
@@ -1504,220 +1126,91 @@
     const v = $("view-skills");
     if (!skillsBuilt) {
       skillsBuilt = true;
-      v.innerHTML = '<div class="cardbox"><h4>اسکیل‌ها، دستورها و عامل‌ها</h4><div class="muted">هر چیزی که Claude در این پروژه می‌تواند از آن استفاده کند: ' +
-        'از پوشهٔ <span class="mono ltr">.claude</span> پروژه، <span class="mono ltr">~/.claude</span> و پلاگین‌های نصب‌شده. «اجرا» دستور را در کادر پیام می‌گذارد.</div>' +
-        '<input class="field" id="skQ" placeholder="جستجوی نام یا توضیح…" dir="auto" style="width:100%;margin-top:8px"></div><div id="skBody"></div>';
+      v.innerHTML = '<div class="cardbox"><h4>' + tr("Skills", "اسکیل‌ها") + '</h4><div class="muted">' +
+        tr('Skills from the project\'s <span class="mono ltr">.gapgpt</span> folder and <span class="mono ltr">~/.gapgpt</span>. Type <span class="mono ltr">/name</span> in the message box to use one; "Run" puts it there.',
+          'اسکیل‌های پوشهٔ <span class="mono ltr">.gapgpt</span> پروژه و <span class="mono ltr">~/.gapgpt</span>. برای استفاده <span class="mono ltr">/name</span> را در کادر پیام بنویسید؛ «اجرا» آن را همان‌جا می‌گذارد.') + "</div>" +
+        '<input class="field" id="skQ" placeholder="' + tr("Search name or description…", "جستجوی نام یا توضیح…") + '" dir="auto" style="width:100%;margin-top:8px"></div>' +
+        '<div id="skBody"></div><div id="skImport"></div>';
+      $("skQ").value = G.skillQ;
       $("skQ").addEventListener("input", (e) => {
         G.skillQ = e.target.value.toLowerCase();
         renderSkillsBody();
       });
     }
     renderSkillsBody();
+    $("skImport").innerHTML = importHtml();
   }
   function renderSkillsBody() {
     const box = $("skBody");
     if (!box) return;
-    const d = G.skills;
-    if (!d) return (box.innerHTML = '<div class="cardbox"><div class="muted">در حال خواندن…</div></div>');
-    const c = chat();
-    const active = (c && c.activeSkills) || null;
+    const items = G.skills;
+    if (!items) return (box.innerHTML = '<div class="cardbox"><div class="muted">' + tr("Loading…", "در حال خواندن…") + "</div></div>");
     const q = G.skillQ;
-    const match = (x) => !q || (x.name + " " + x.description).toLowerCase().includes(q);
-    const srcLabel = (src) => (src === "project" ? "پروژه" : src === "user" ? "کاربر" : src.replace(/^plugin:/, "پلاگین: "));
-    const section = (title, items, runnable) => {
-      const list = items.filter(match);
-      const groups = {};
-      list.forEach((x) => (groups[x.source] = groups[x.source] || []).push(x));
-      const order = Object.keys(groups).sort((a, b) => (a === "project" ? -1 : b === "project" ? 1 : a === "user" ? -1 : b === "user" ? 1 : a.localeCompare(b)));
-      return '<div class="cardbox"><h4>' + title + " (" + list.length + ")</h4>" + (list.length ? order.map((src) =>
-        "<h5>" + esc(srcLabel(src)) + '</h5><div class="rows">' + groups[src].map((x) =>
-          '<div class="r"><span class="grow"><span class="code">' + (runnable ? "/" : "") + esc(x.name) +
-          (active && runnable && active.indexOf(x.name) >= 0 ? ' <span class="tag on">فعال در این نشست</span>' : "") +
-          '</span><span class="sub" dir="auto">' + esc(x.description || "—") + "</span></span>" +
-          '<span class="acts">' + (runnable ? '<button class="pillbtn" data-run-skill="' + esc(x.name) + '">اجرا</button>' : "") +
-          '<button class="icon" data-open-path="' + esc(x.path) + '" title="باز کردن فایل">↗</button></span></div>').join("") + "</div>").join("")
-        : '<div class="empty-note">چیزی پیدا نشد.</div>') + "</div>";
-    };
-    box.innerHTML = section("اسکیل‌ها", d.skills || [], true) + section("دستورهای سفارشی", d.commands || [], true) + section("عامل‌ها (subagents)", d.agents || [], false);
+    const list = items.filter((x) => !q || (x.name + " " + x.description).toLowerCase().includes(q));
+    const srcLabel = (src) => (src === "project" ? tr("Project", "پروژه") : src === "user" ? tr("User", "کاربر") : src);
+    const groups = {};
+    list.forEach((x) => (groups[x.source] = groups[x.source] || []).push(x));
+    const order = Object.keys(groups).sort((a, b) => (a === "project" ? -1 : b === "project" ? 1 : a.localeCompare(b)));
+    box.innerHTML = '<div class="cardbox"><h4>' + tr("Available skills", "اسکیل‌های موجود") + " (" + list.length + ")</h4>" + (list.length ? order.map((src) =>
+      "<h5>" + esc(srcLabel(src)) + '</h5><div class="rows">' + groups[src].map((x) =>
+        '<div class="r"><span class="grow"><span class="code">/' + esc(x.name) + '</span><span class="sub" dir="' + textDir(x.description, "ltr") + '">' +
+        esc(x.description || "—") + "</span></span>" +
+        '<span class="acts"><button class="pillbtn" data-run-skill="' + esc(x.name) + '">' + tr("Run", "اجرا") + "</button>" +
+        '<button class="icon" data-open-path="' + esc(x.path) + '" title="' + tr("Open file", "باز کردن فایل") + '">↗</button></span></div>').join("") + "</div>").join("")
+      : '<div class="empty-note">' + tr("No skills found.", "اسکیلی پیدا نشد.") + "</div>") + "</div>";
   }
 
   // ---------------------------------------------------------------- rules
-  const SCOPE_FA = { project: "پروژه", local: "محلی (شخصی، داخل git نمی‌رود)", user: "کاربر (همهٔ پروژه‌ها)", parent: "پوشهٔ والد",
-    "project-rule": "قانون پروژه (.claude/rules)", "user-rule": "قانون کاربر (~/.claude/rules)", "auto-memory": "حافظهٔ خودکار" };
+  const SCOPES = {
+    project: ["Project", "پروژه"], "project-rule": ["Project rule", "قانون پروژه"],
+    user: ["User (all projects)", "کاربر (همهٔ پروژه‌ها)"], "user-rule": ["User rule", "قانون کاربر"],
+  };
+  function scopeLabel(s) {
+    const l = SCOPES[s];
+    return l ? tr(l[0], l[1]) : s;
+  }
   function renderRules() {
     const v = $("view-rules");
-    const r = G.rules;
-    if (!r) return (v.innerHTML = '<div class="cardbox"><div class="muted">در حال خواندن…</div></div>');
-    const mem = r.memory || [];
-    const projectMd = mem.find((m) => m.scope === "project" && /\/CLAUDE\.md$/.test(m.path) && !/\.claude\/CLAUDE\.md$/.test(m.path));
-    let html = '<div class="cardbox"><h4>دستورالعمل‌ها (CLAUDE.md)</h4><div class="muted">Claude این فایل‌ها را در شروع هر نشست می‌خواند و از آن‌ها پیروی می‌کند.</div><div class="rows">' +
-      mem.filter((m) => m.exists).map((m) => '<div class="r"><span class="grow"><span class="code">' + esc(tildePath(m.path)) +
-        '</span><span class="sub">' + esc(SCOPE_FA[m.scope] || m.scope) + " · " + m.lines + ' خط</span><div class="preview">' + esc(m.preview || "") + "</div></span>" +
-        '<span class="acts"><button class="icon" data-open-path="' + esc(m.path) + '" title="باز کردن">↗</button></span></div>').join("") + "</div>";
-    if (projectMd && !projectMd.exists) {
-      html += '<div class="notice warn">این پروژه هنوز CLAUDE.md ندارد.</div><div class="btnrow">' +
-        '<button class="primary" data-run-init="1">ساخت با Claude (/init)</button>' +
-        '<button class="pillbtn" data-create-path="' + esc(projectMd.path) + '">ساخت فایل خالی</button></div>';
-    }
-    html += "</div>";
-    const settings = r.settings || [];
-    const chips = (arr, cls) => (arr && arr.length ? '<div class="rulechips">' + arr.map((x) => '<span class="tag ' + cls + '">' + esc(x) + "</span>").join("") + "</div>" : "");
-    html += '<div class="cardbox"><h4>قوانین دسترسی (permissions)</h4><div class="muted">ابزارها و دستورهایی که Claude بدون پرسش مجاز (allow)، با پرسش (ask) یا ممنوع (deny) است. ' +
-      "قوانین deny از همه مهم‌ترند.</div>" + (settings.length ? settings.map((st) => {
-        const has = (st.allow && st.allow.length) || (st.ask && st.ask.length) || (st.deny && st.deny.length) || st.defaultMode || (st.additionalDirectories && st.additionalDirectories.length);
-        return "<h5>" + esc(SCOPE_FA[st.scope] || st.scope) + ' · <span class="mono ltr">' + esc(tildePath(st.path)) + '</span> <button class="icon" data-open-path="' + esc(st.path) + '">↗</button></h5>' +
-          (has ? (st.defaultMode ? '<div class="sub">حالت پیش‌فرض: <span class="mono">' + esc(st.defaultMode) + "</span></div>" : "") +
-            (st.allow && st.allow.length ? '<div class="sub">مجاز:</div>' + chips(st.allow, "allow") : "") +
-            (st.ask && st.ask.length ? '<div class="sub">با پرسش:</div>' + chips(st.ask, "ask") : "") +
-            (st.deny && st.deny.length ? '<div class="sub">ممنوع:</div>' + chips(st.deny, "deny") : "") +
-            (st.additionalDirectories && st.additionalDirectories.length ? '<div class="sub">پوشه‌های اضافه:</div>' + chips(st.additionalDirectories, "") : "")
-            : '<div class="empty-note">قانون دسترسی ندارد.</div>');
-      }).join("") : '<div class="empty-note">هیچ فایل settings.json پیدا نشد.</div>') + "</div>";
-    const hooks = [];
-    settings.forEach((st) => (st.hooks || []).forEach((h) => hooks.push({ scope: st.scope, event: h.event, commands: h.commands || [] })));
-    html += '<div class="cardbox"><h4>Hookها</h4><div class="muted">دستورهایی که در رویدادهای Claude (مثل قبل یا بعد از هر ابزار) خودکار اجرا می‌شوند.</div><div class="rows">' +
-      (hooks.length ? hooks.map((h) => '<div class="r"><span class="tag">' + esc(h.event) + '</span><span class="grow">' +
-        h.commands.map((cmd) => '<span class="code">' + esc(cmd) + "</span>").join("") + '<span class="sub">' + esc(SCOPE_FA[h.scope] || h.scope) + "</span></span></div>").join("")
-        : '<div class="empty-note">هیچ hookی تعریف نشده.</div>') + "</div></div>";
-    const plugins = [];
-    settings.forEach((st) => (st.plugins || []).forEach((p) => plugins.push(p)));
-    if (plugins.length) html += '<div class="cardbox"><h4>پلاگین‌های فعال</h4>' + chips(plugins, "on") + "</div>";
-    v.innerHTML = html;
+    const items = G.rules;
+    if (!items) return (v.innerHTML = '<div class="cardbox"><div class="muted">' + tr("Loading…", "در حال خواندن…") + "</div></div>");
+    v.innerHTML = '<div class="cardbox"><h4>' + tr("Rules", "قوانین") + " (" + items.length + ")</h4><div class=\"muted\">" +
+      tr('These files from <span class="mono ltr">.gapgpt</span> are sent to the model as instructions with every message.',
+        'این فایل‌ها از <span class="mono ltr">.gapgpt</span> به‌عنوان دستورالعمل همراه هر پیام به مدل فرستاده می‌شوند.') + '</div><div class="rows">' +
+      (items.length ? items.map((m) => '<div class="r"><span class="grow"><span class="code">' + esc(m.name) + '</span><span class="sub">' + esc(scopeLabel(m.scope)) +
+        " · " + m.lines + tr(" lines", " خط") + '</span><div class="preview" dir="' + textDir(m.preview, "ltr") + '">' + esc(m.preview || "") + "</div></span>" +
+        '<span class="acts"><button class="icon" data-open-path="' + esc(m.path) + '" title="' + tr("Open", "باز کردن") + '">↗</button></span></div>').join("")
+        : '<div class="empty-note">' + tr("No rules yet. Add Markdown files under .gapgpt/rules or import existing ones below.",
+          "هنوز قانونی نیست. فایل‌های Markdown را در .gapgpt/rules بگذارید یا موارد موجود را در پایین کپی کنید.") + "</div>") + "</div></div>" + importHtml();
   }
-  function sendFromView(text) {
-    switchView("chat");
-    send(G.lang === "en" && window.I18N ? window.I18N.t(text) : text);
-  }
-
-  // ---------------------------------------------------------------- workloads
-  function renderWorkloads() {
-    const v = $("view-workloads");
-    const c = chat();
-    const keep = G.keepMin;
-    const agents = c ? c.agentOrder.map((id) => c.agents[id]).filter((a) => a.status === "running" || !keep || Date.now() - a.ended < keep * 60000) : [];
-    const opt = (m, l) => '<option value="' + m + '"' + (keep === m ? " selected" : "") + ">" + l + "</option>";
-    v.innerHTML = '<div class="cardbox"><h4>کارها (Workloads)</h4>' +
-      '<div class="muted">نگه‌داشتن کارهای تمام‌شده به مدت <select class="field" id="wlKeep">' +
-      opt(5, "۵ دقیقه") + opt(15, "۱۵ دقیقه") + opt(60, "۱ ساعت") + opt(0, "همیشه") + "</select></div><br>" +
-      '<div class="wl-canvas">' + (c ? '<div class="wl-root">' + esc(c.title || "گفتگوی جدید") + "</div>" : "") +
-      (agents.length ? '<div class="wl-links' + (agents.length > 1 ? " multi" : "") + '">' + agents.map((a) =>
-        '<div class="wl-node ' + a.status + '" data-open-agent="' + a.id + '"><span class="dot ' + (a.status === "running" ? "busy" : a.status === "error" ? "err" : "ok") +
-        '"></span><span class="d">' + esc(a.desc || "Agent") + '</span><span class="ty">' + esc(a.type || "") + "</span></div>").join("") + "</div>"
-        : '<div class="muted" style="margin-left:24px" dir="rtl">هنوز زیرعاملی (Task) در این گفتگو اجرا نشده.</div>') +
-      "</div></div>";
-    $("wlKeep").addEventListener("change", (e) => {
-      G.keepMin = +e.target.value;
-      renderWorkloads();
-    });
-  }
-
   // ---------------------------------------------------------------- git
-  const GIT_ACTIONS = [["Git.Branches", "شاخه‌ها"], ["Git.Pull", "Pull"], ["Git.Fetch", "Fetch"], ["Vcs.Push", "Push"], ["Git.Merge", "Merge"], ["Git.Rebase", "Rebase"]];
+  // ---------------------------------------------------------------- git
+  const GIT_ACTIONS = [["Git.Branches", "Branches", "شاخه‌ها"], ["Git.Pull", "Pull", "Pull"], ["Git.Fetch", "Fetch", "Fetch"], ["Vcs.Push", "Push", "Push"],
+    ["Git.Merge", "Merge", "Merge"], ["Git.Rebase", "Rebase", "Rebase"]];
   function renderGit() {
     const v = $("view-git");
     const g = G.git;
-    if (!g) return (v.innerHTML = '<div class="cardbox"><div class="muted">در حال خواندن مخزن…</div></div>');
-    if (g.error) return (v.innerHTML = '<div class="cardbox"><h4>مخزن</h4><div class="muted">' + esc(g.error) + "</div></div>");
+    if (!g) return (v.innerHTML = '<div class="cardbox"><div class="muted">' + tr("Reading the repository…", "در حال خواندن مخزن…") + "</div></div>");
+    if (g.error) return (v.innerHTML = '<div class="cardbox"><h4>' + tr("Repository", "مخزن") + '</h4><div class="muted">' + esc(g.error) + "</div></div>");
     const kv = (k, val) => '<span class="k">' + k + '</span><span class="v">' + esc(val) + "</span>";
     v.innerHTML =
-      '<div class="cardbox"><h4>مخزن</h4><div class="ltr" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;text-align:left">' +
+      '<div class="cardbox"><h4>' + tr("Repository", "مخزن") + '</h4><div class="ltr" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;text-align:left">' +
       '<b class="mono">' + esc(g.root) + '</b><span class="badge">' + esc(g.branch) + "</span></div>" +
       '<div class="muted mono ltr" style="text-align:left">' + esc(g.head) + "</div>" +
-      (g.headSubject ? '<div class="muted" dir="auto">' + esc(g.headSubject) + "</div>" : "") + "</div>" +
-      '<div class="cards2"><div class="cardbox"><h4>شاخه</h4><div class="kv">' +
-      (g.tracking ? kv("دنبال‌کردن", g.tracking) + kv("جلوتر (ahead)", g.ahead) + kv("عقب‌تر (behind)", g.behind) + kv("نقطهٔ جدا شدن", g.divergedAt || "—")
-        : kv("دنبال‌کردن", "بدون upstream")) + kv("فایل‌های تغییرکرده", g.changed) +
-      '</div><div class="muted" style="margin-top:6px">نسبت به آخرین fetch شما شمرده شده است.</div></div>' +
-      '<div class="cardbox"><h4>commitهای اخیر</h4><div class="rows">' + (g.log || []).map((l) =>
-        '<div class="r"><span class="mono" style="color:var(--accent)">' + esc(l.hash) + '</span><span class="grow" dir="auto">' + esc(l.subject) +
+      (g.headSubject ? '<div class="muted" dir="' + textDir(g.headSubject, "ltr") + '">' + esc(g.headSubject) + "</div>" : "") + "</div>" +
+      '<div class="cards2"><div class="cardbox"><h4>' + tr("Branch", "شاخه") + '</h4><div class="kv">' +
+      (g.tracking ? kv(tr("Tracking", "دنبال‌کردن"), g.tracking) + kv(tr("Ahead", "جلوتر (ahead)"), g.ahead) + kv(tr("Behind", "عقب‌تر (behind)"), g.behind) +
+        kv(tr("Diverged at", "نقطهٔ جدا شدن"), g.divergedAt || "—")
+        : kv(tr("Tracking", "دنبال‌کردن"), tr("no upstream", "بدون upstream"))) + kv(tr("Changed files", "فایل‌های تغییرکرده"), g.changed) +
+      '</div><div class="muted" style="margin-top:6px">' + tr("Counted against your last fetch.", "نسبت به آخرین fetch شما شمرده شده است.") + "</div></div>" +
+      '<div class="cardbox"><h4>' + tr("Recent commits", "commitهای اخیر") + '</h4><div class="rows">' + (g.log || []).map((l) =>
+        '<div class="r"><span class="mono" style="color:var(--accent)">' + esc(l.hash) + '</span><span class="grow" dir="' + textDir(l.subject, "ltr") + '">' + esc(l.subject) +
         '<span class="sub"> · ' + esc(l.author) + " · " + esc(l.when) + "</span></span></div>").join("") + "</div></div></div><br>" +
-      '<div class="cardbox"><h4>عملیات</h4><h5>از Claude بخواه</h5><div class="btnrow">' +
-      '<button class="pillbtn" data-git-ask="commit">Commit با Claude</button>' +
-      '<button class="pillbtn" data-git-ask="revert">برگرداندن این فایل با Claude</button>' +
-      '<button class="pillbtn" data-git-ask="review">بررسی تغییرات (/review)</button></div>' +
-      '<h5>مخزن</h5><div class="btnrow"><button class="pillbtn" data-ide-action="Vcs.Show.Log">Git log</button>' +
-      '<button class="pillbtn" data-ide-action="CheckinProject">Commit…</button><button class="pillbtn" data-git-refresh="1">↻ تازه‌سازی</button></div>' +
-      '<h5>عملیات IDE</h5><div class="btnrow">' + GIT_ACTIONS.map((a) => '<button class="pillbtn" data-ide-action="' + a[0] + '">' + a[1] + "</button>").join("") +
+      "<div class=\"cardbox\"><h4>" + tr("Actions", "عملیات") + "</h4>" +
+      "<h5>" + tr("Repository", "مخزن") + '</h5><div class="btnrow"><button class="pillbtn" data-ide-action="Vcs.Show.Log">Git log</button>' +
+      '<button class="pillbtn" data-ide-action="CheckinProject">Commit…</button><button class="pillbtn" data-git-refresh="1">↻ ' + tr("Refresh", "تازه‌سازی") + "</button></div>" +
+      "<h5>" + tr("IDE actions", "عملیات IDE") + '</h5><div class="btnrow">' +
+      GIT_ACTIONS.map((a) => '<button class="pillbtn" data-ide-action="' + a[0] + '">' + tr(a[1], a[2]) + "</button>").join("") +
       "</div></div>";
-  }
-  function gitAsk(kind) {
-    if (kind === "commit") return sendFromView("تغییرات فعلی را بررسی کن (git status و git diff) و با یک پیام commit دقیق و مناسب commit کن. push نکن.");
-    if (kind === "review") return sendFromView("/review");
-    if (kind === "revert") {
-      const f = G.ctx && G.ctx.file;
-      if (!f) return alertNotice("اول فایلی را در ویرایشگر باز کنید.");
-      sendFromView("تغییرات فایل `" + f + "` را نسبت به آخرین commit خلاصه کن، سپس آن را به نسخهٔ آخرین commit برگردان (git checkout -- " + f + ").");
-    }
-  }
-  function alertNotice(t) {
-    const c = chat();
-    switchView("chat");
-    notice(c, c.main, t, "warn");
-  }
-
-  // ---------------------------------------------------------------- guard
-  let guardBuilt = false;
-  function renderGuard() {
-    const v = $("view-guard");
-    if (!guardBuilt) {
-      guardBuilt = true;
-      v.innerHTML =
-        '<div class="cardbox"><h4>لاگ محافظ (Guard)</h4><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">' +
-        '<div class="muted" id="gSummary"></div><div><label class="switch"><input type="checkbox" id="gEnabled"> محافظ فعال</label> &nbsp; ' +
-        '<label class="switch"><input type="checkbox" id="gOnlyChat"> فقط این گفتگو</label></div></div>' +
-        '<div class="muted" style="margin-top:4px">محافظ هر درخواستی را که برای اجازه به IDE می‌آید با قوانین زیر می‌سنجد: قوانین «مسدود» بلافاصله رد می‌شوند و قوانین «هشدار» حتی اگر قبلاً «همیشه اجازه» داده باشید دوباره از شما می‌پرسند. در حالت «بدون محدودیت» درخواستی به IDE نمی‌آید.</div></div>' +
-        '<div class="cardbox"><h4>فیلتر</h4><div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px">' +
-        '<input class="field" id="gQ" placeholder="قانون، دستور، ابزار…" dir="auto"><select class="field" id="gCat"></select><select class="field" id="gRule"></select></div></div>' +
-        '<div class="cardbox"><h4>تصمیم‌ها</h4><div class="segtabs" id="gTabs"></div><div class="rows" id="gRows"></div></div>' +
-        '<div class="cards2"><div class="cardbox"><h4>قوانین</h4><div class="rows" id="gRules"></div></div>' +
-        '<div class="cardbox"><h4>لیست سفید</h4><div class="rows" id="gWhite"></div></div></div>';
-      $("gEnabled").addEventListener("change", (e) => toIde({ type: "guardToggle", value: e.target.checked }));
-      $("gOnlyChat").addEventListener("change", (e) => {
-        G.guardOnlyChat = e.target.checked;
-        renderGuardBody();
-      });
-      ["gQ", "gCat", "gRule"].forEach((id) => $(id).addEventListener("input", renderGuardBody));
-    }
-    renderGuardBody();
-  }
-  const GUARD_TABS = [["blocked", "مسدود شده"], ["allowed", "اجازه داده شده"], ["denied", "رد شده"], ["whitelisted", "لیست سفید"], ["disabled", "غیرفعال"]];
-  function guardTabCount(g) {
-    const cnt = g.decisions.filter((d) => d.chat === G.active && d.outcome === "blocked").length;
-    document.querySelector('#viewTabs .vt[data-view="guard"]').innerHTML = "محافظ" + (cnt ? '<span class="count">' + cnt + "</span>" : "");
-  }
-  function renderGuardBody() {
-    const g = G.guard;
-    if (!g || !guardBuilt) return;
-    $("gEnabled").checked = g.enabled;
-    $("gOnlyChat").checked = G.guardOnlyChat;
-    const cats = [...new Set(g.rules.map((r) => r.category))];
-    const keepSel = (id, opts) => {
-      const el = $(id), cur = el.value;
-      el.innerHTML = opts.map((o) => '<option value="' + esc(o[0]) + '">' + esc(o[1]) + "</option>").join("");
-      el.value = cur;
-    };
-    keepSel("gCat", [["", "همهٔ دسته‌ها"]].concat(cats.map((c) => [c, c])));
-    keepSel("gRule", [["", "همهٔ قوانین"]].concat(g.rules.map((r) => [r.id, r.id])));
-    const q = $("gQ").value.toLowerCase(), cat = $("gCat").value, rule = $("gRule").value;
-    let ds = g.decisions.slice().reverse();
-    if (G.guardOnlyChat) ds = ds.filter((d) => d.chat === G.active);
-    ds = ds.filter((d) => (!cat || d.category === cat) && (!rule || d.ruleId === rule) &&
-      (!q || (d.ruleId + " " + d.tool + " " + d.target).toLowerCase().includes(q)));
-    $("gSummary").textContent = "نمایش " + ds.length + " مورد" + (G.guardOnlyChat ? " از این گفتگو" : "") + ". لاگ ۵۰۰ مورد آخر کل پروژه را نگه می‌دارد.";
-    $("gTabs").innerHTML = GUARD_TABS.map((t) => '<button class="' + (G.guardTab === t[0] ? "on" : "") + '" data-gtab="' + t[0] + '">' + t[1] +
-      " (" + ds.filter((d) => d.outcome === t[0]).length + ")</button>").join("");
-    const rows = ds.filter((d) => d.outcome === G.guardTab);
-    $("gRows").innerHTML = rows.length ? rows.map((d) => '<div class="r"><span class="tag ' + d.outcome + '">' + esc(d.ruleId) + "</span>" +
-      '<span class="grow"><span class="code">' + esc(d.target) + '</span><span class="sub">' + esc(d.time + " · " + d.tool + " · " + d.category) + "</span></span>" +
-      ((d.outcome === "blocked" || d.outcome === "denied") && g.whitelist.indexOf(d.target) < 0
-        ? '<button class="pillbtn" data-gwhite="' + esc(d.target) + '">افزودن به لیست سفید</button>' : "") + "</div>").join("")
-      : '<div class="empty-note">در این گفتگو چیزی اینجا نیامده.</div>';
-    $("gRules").innerHTML = g.rules.map((r) => '<div class="r"><label class="switch"><input type="checkbox" data-grule="' + r.id + '"' + (r.enabled ? " checked" : "") + "></label>" +
-      '<span class="grow"><span dir="auto">' + esc(r.description) + '</span><span class="sub mono"> ' + esc(r.id) + " · " + esc(r.category) + "</span></span>" +
-      '<span class="tag ' + r.action + '">' + (r.action === "block" ? "مسدود" : "هشدار") + "</span></div>").join("");
-    $("gWhite").innerHTML = g.whitelist.length ? g.whitelist.map((w) => '<div class="r"><span class="grow code">' + esc(w) +
-      '</span><button class="icon" data-gunwhite="' + esc(w) + '" title="حذف">×</button></div>').join("") : '<div class="empty-note">خالی است.</div>';
-    guardTabCount(g);
   }
 
   // ---------------------------------------------------------------- log
@@ -1726,13 +1219,13 @@
     const v = $("view-log");
     if (!logBuilt) {
       logBuilt = true;
-      v.innerHTML = '<div class="cardbox"><h4>لاگ پلاگین</h4><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">' +
-        '<div class="chips" id="lChips"></div><button class="pillbtn" id="lCopy">کپی</button></div>' +
-        '<div class="muted" id="lSummary" style="margin-top:6px"></div></div><div class="cardbox"><h4>خط‌ها</h4><div class="lines" id="lLines"></div></div>';
+      v.innerHTML = '<div class="cardbox"><h4>' + tr("Plugin log", "لاگ پلاگین") + '</h4><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">' +
+        '<div class="chips" id="lChips"></div><button class="pillbtn" id="lCopy">' + tr("Copy", "کپی") + "</button></div>" +
+        '<div class="muted" id="lSummary" style="margin-top:6px"></div></div><div class="cardbox"><h4>' + tr("Lines", "خط‌ها") + '</h4><div class="lines" id="lLines"></div></div>';
       $("lCopy").addEventListener("click", () => {
         toIde({ type: "copy", text: filteredLog().map((l) => l.time + " " + l.level + " [" + l.source + "] " + l.message).join("\n") });
-        $("lCopy").textContent = "✓ کپی شد";
-        setTimeout(() => ($("lCopy").textContent = "کپی"), 1200);
+        $("lCopy").textContent = tr("✓ Copied", "✓ کپی شد");
+        setTimeout(() => ($("lCopy").textContent = tr("Copy", "کپی")), 1200);
       });
     }
     renderLogBody();
@@ -1742,115 +1235,14 @@
   }
   function renderLogBody() {
     if (!logBuilt) return;
-    $("lChips").innerHTML = [["ALL", "همه"], ["WARN", "Warn"], ["INFO", "Info"], ["DEBUG", "Debug"]].map((f) =>
+    $("lChips").innerHTML = [["ALL", tr("All", "همه")], ["WARN", "Warn"], ["INFO", "Info"], ["DEBUG", "Debug"]].map((f) =>
       '<button class="' + (G.logFilter === f[0] ? "on" : "") + '" data-lfilter="' + f[0] + '">' + f[1] + "</button>").join("") +
-      '<button class="' + (G.logDebug ? "on" : "") + '" data-ldebug="1">' + (G.logDebug ? "● " : "○ ") + "ثبت Debug</button>";
+      '<button class="' + (G.logDebug ? "on" : "") + '" data-ldebug="1">' + (G.logDebug ? "● " : "○ ") + tr("Record debug", "ثبت Debug") + "</button>";
     const ls = filteredLog();
-    $("lSummary").textContent = ls.length + " از " + G.logLines.length + " خط · حداکثر ۲۰۰۰ خط نگه داشته می‌شود · debug " + (G.logDebug ? "روشن" : "خاموش");
+    $("lSummary").textContent = tr(ls.length + " of " + G.logLines.length + " lines · up to 2000 lines are kept · debug " + (G.logDebug ? "on" : "off"),
+      ls.length + " از " + G.logLines.length + " خط · حداکثر ۲۰۰۰ خط نگه داشته می‌شود · debug " + (G.logDebug ? "روشن" : "خاموش"));
     $("lLines").innerHTML = ls.slice(-500).map((l) => '<div class="ln ' + l.level + '"><span class="meta">' + esc(l.time) + ' </span><span class="lvl">' + l.level +
-      '</span>\n<span class="meta">' + esc(l.source) + "</span>\n" + esc(l.message) + "</div>").join("") || '<div class="empty-note">خالی است.</div>';
-  }
-
-  // ---------------------------------------------------------------- vulnerabilities
-  function renderVulns() {
-    const v = $("view-vulns");
-    const inv = G.vulnInv;
-    const n = inv ? inv.count : "…";
-    let html = '<div class="cardbox"><h4>آسیب‌پذیری وابستگی‌ها</h4>' +
-      "<p>بررسی این پروژه در یک پایگاه دادهٔ آسیب‌پذیری یعنی فرستادن فهرست وابستگی‌هایش به یک سرویس خارجی. این کار هنوز انجام نشده و تا وقتی همین‌جا اجازه ندهید انجام نمی‌شود.</p>" +
-      '<div class="kv"><span class="k">ارسال به</span><span class="v">OSV.dev (Open Source Security Foundation)</span>' +
-      '<span class="k">Endpoint</span><span class="v">https://api.osv.dev/v1/querybatch</span><span class="k">تعداد اجزا</span><span class="v">' + n + "</span></div>" +
-      "<h5>چه چیزی از این دستگاه خارج می‌شود</h5><ul>" +
-      "<li>نام هر وابستگی که پروژه استفاده می‌کند — مستقیم و غیرمستقیم.</li><li>نسخهٔ دقیق هرکدام، همان‌طور که lockfile تعیین کرده.</li>" +
-      "<li>اکوسیستم هرکدام: npm، PyPI، Pub، crates.io، Go یا Packagist.</li>" +
-      "<li>هیچ چیز دیگر: نه محتوای فایل، نه مسیرهای پروژه، نه نام مخزن، نه حساب، نه هیچ شناسه‌ای.</li></ul>" +
-      "<h5>یعنی چه</h5><ul><li>درخواست بدون احراز هویت است، اما از آدرس IP شما فرستاده می‌شود.</li>" +
-      "<li>فهرست کامل وابستگی‌ها با نسخه‌های دقیق، تقریباً اثر انگشت یک کد خصوصی است.</li>" +
-      "<li>به هر کسی که درخواست را ببیند نشان می‌دهد کدام نسخه‌های آسیب‌پذیر را دارید.</li>" +
-      "<li>تا اینجا اجازه ندهید چیزی فرستاده نمی‌شود و هیچ اسکنی خودکار شروع نمی‌شود — نه هنگام باز شدن، نه build، نه زمان‌بندی.</li></ul>" +
-      '<div class="btnrow" style="align-items:center"><button class="primary" id="vScan"' + (G.vulnBusy || !inv || !inv.count ? " disabled" : "") + ">" +
-      (G.vulnBusy ? "در حال اسکن…" : "اجازه و اسکن همین حالا") + '</button><button class="icon" id="vList">نمایش فهرست دقیق ارسالی (' + n + ")</button></div>" +
-      '<div class="muted">lockfileهای پشتیبانی‌شده: package-lock.json، pubspec.lock، requirements.txt (==)، poetry.lock، Cargo.lock، go.sum، composer.lock</div></div>';
-    if (G.vulnShowList && inv) {
-      html += '<div class="cardbox"><h4>فهرست دقیق</h4><div class="rows">' + inv.items.map((d) => '<div class="r"><span class="tag">' + esc(d.ecosystem) +
-        '</span><span class="grow code">' + esc(d.name + "@" + d.version) + '</span><span class="sub mono">' + esc(d.file) + "</span></div>").join("") + "</div></div>";
-    }
-    const r = G.vulnRes;
-    if (r) {
-      if (r.error) html += '<div class="cardbox"><h4>نتیجه</h4><div class="notice error">اسکن ناموفق بود: ' + esc(r.error) + "</div></div>";
-      else {
-        html += '<div class="cardbox"><h4>نتیجه</h4><div class="muted">' + r.scanned + " جزء بررسی شد — " + r.vulnerable.length + " مورد آسیب‌پذیر</div>" +
-          '<div class="rows">' + r.vulnerable.map((x) => '<div class="r"><span class="tag denied">' + esc(x.ecosystem) + '</span><span class="grow"><span class="code">' +
-            esc(x.name + "@" + x.version) + '</span><span class="sub mono">' + esc(x.file) + "</span>" + (x.details || []).map((d) =>
-            '<div class="sub" dir="auto"><a href="https://osv.dev/vulnerability/' + esc(d.id) + '">' + esc(d.id) + "</a>" + (d.severity ? " · " + esc(d.severity) : "") +
-            " — " + esc(d.summary) + "</div>").join("") + (x.ids.length > 3 ? '<div class="sub">+' + (x.ids.length - 3) + " مورد دیگر</div>" : "") +
-            "</span></div>").join("") + "</div></div>";
-      }
-    }
-    v.innerHTML = html;
-    $("vScan").addEventListener("click", () => {
-      G.vulnBusy = true;
-      G.vulnRes = null;
-      toIde({ type: "vulnScan" });
-      renderVulns();
-    });
-    $("vList").addEventListener("click", () => {
-      G.vulnShowList = !G.vulnShowList;
-      renderVulns();
-    });
-  }
-
-  // ---------------------------------------------------------------- session
-  const CTX_COLORS = ["#002748", "#0b3f70", "#1a5996", "#2f74b8", "#5b9fe0", "#9cc5ee", "#06345e", "#24669f", "#6cb6ff", "#7b7e84"];
-  function renderSession() {
-    const v = $("view-session");
-    const c = chat();
-    if (!c) return;
-    if (isGap()) return renderGapSession(c);
-    const si = c.sessionInfo || {};
-    const a = G.account || {};
-    const plan = a.planTier || a.subscriptionType || "";
-    const keys = Object.keys(G.limits);
-    let html = '<div class="cardbox"><h4>محدودیت‌های پلن' + (plan ? " · " + esc(plan.toUpperCase()) : "") + "</h4>" +
-      (keys.length ? keys.map((k) => {
-        const l = G.limits[k];
-        const p = l.pct || 0;
-        return '<div class="meter"><div class="row1"><span>' + esc(limitLabel(k)) + '</span><span class="pct">' + p.toFixed(1) + "% used</span></div>" +
-          '<div class="track"><div class="fill' + (p >= 95 ? " full" : p >= 75 ? " warn" : "") + '" style="width:' + p + '%"></div></div>' +
-          '<div class="reset">بازنشانی تا ' + esc(fmtReset(l.resetsAt)) + "</div></div>";
-      }).join("") : '<div class="empty-note">در حال خواندن با دستور /usage …</div>') +
-      (G.usageInsights ? '<h5>چه چیزی مصرف را بالا می‌برد؟</h5><div class="preview" style="max-height:none;direction:ltr;text-align:left">' + esc(G.usageInsights) + "</div>" : "") +
-      '<div class="btnrow" style="margin-top:6px"><button class="pillbtn" data-usage-refresh="1">↻ به‌روزرسانی مصرف</button></div></div>';
-    const cx = si.context;
-    html += '<div class="cardbox"><h4>Context</h4>';
-    if (!cx) html += '<div class="empty-note">در حال محاسبه با دستور /context …</div>';
-    else {
-      const total = cx.total || 1;
-      const cats = (cx.categories || []).filter((x) => x.name !== "Free space");
-      html += '<div class="ltr" style="display:flex;justify-content:space-between"><span class="muted">Context</span><span class="mono">' +
-        fmtInt(cx.used) + " / " + fmtInt(cx.total) + " · " + (cx.percent || 0) + "%</span></div>" +
-        '<div class="stack">' + cats.map((x, i) => '<span title="' + esc(x.name) + '" style="width:' + (x.tokens / total) * 100 + "%;background:" +
-          CTX_COLORS[i % CTX_COLORS.length] + '"></span>').join("") + "</div>" +
-        '<div class="legend">' + (cx.categories || []).map((x) => '<span><i style="background:' +
-          (x.name === "Free space" ? "var(--user-bg)" : CTX_COLORS[cats.indexOf(x) % CTX_COLORS.length]) + '"></i>' + esc(x.name) + "<b>" + fmtInt(x.tokens) + "</b></span>").join("") + "</div>";
-    }
-    html += "</div>";
-    const kv = (k, val) => '<span class="k">' + k + '</span><span class="v" title="' + esc(val) + '">' + esc(val || "—") + "</span>";
-    html += '<div class="cards2"><div class="cardbox"><h4>حساب</h4><div class="kv">' +
-      (a.loggedIn === false ? kv("وضعیت", "وارد نشده") : kv("ایمیل", a.email) + kv("سازمان", a.orgName) + kv("پلن", plan ? "Claude " + cap(plan) : "") +
-        kv("ارائه‌دهنده", a.apiProvider) + kv("روش ورود", a.authMethod) + kv("انقضای ورود", (a.loginExpiresAt || "").slice(0, 10))) +
-      '</div><div class="btnrow" style="margin-top:8px"><button class="pillbtn" id="sLogout">خروج از حساب Claude</button></div></div>' +
-      '<div class="cardbox"><h4>نشست</h4><div class="kv">' + kv("مدل", c.model || G.model || "default") + kv("پوشهٔ کاری", c.cwd || G.projectPath) +
-      kv("نسخه", c.version || si.version) + kv("شناسهٔ نشست", c.sessionId || si.sessionId) +
-      kv("حالت دسترسی", (MODES.find((m) => m[0] === G.permissionMode) || MODES[0])[1]) + kv("Effort", G.effort || "default") +
-      '</div><div class="btnrow" style="margin-top:8px"><button class="pillbtn" id="sRefresh">↻ تازه‌سازی</button></div></div></div>';
-    v.innerHTML = html;
-    $("sLogout").addEventListener("click", () => toIde({ type: "logout" }));
-    $("sRefresh").addEventListener("click", () => {
-      c.sessionInfo = null;
-      renderSession();
-      toIde({ type: "session", chat: c.id });
-    });
+      '</span>\n<span class="meta">' + esc(l.source) + "</span>\n" + esc(l.message) + "</div>").join("") || '<div class="empty-note">' + tr("Empty.", "خالی است.") + "</div>";
   }
 
   // ==================================================================== search in chat
@@ -1889,7 +1281,6 @@
       const c = p && p.chat ? G.chats[p.chat] : null;
       switch (kind) {
         case "init": {
-          G.inited = true;
           const r = document.documentElement.style;
           if (p.bg) r.setProperty("--bg", p.bg);
           if (p.fg) r.setProperty("--fg", p.fg);
@@ -1897,97 +1288,82 @@
           G.sendOnEnter = p.sendOnEnter !== false;
           G.projectPath = p.projectPath || "";
           document.querySelectorAll(".welcome .cwd").forEach((e) => (e.textContent = "cwd: " + G.projectPath));
-          if (p.backend) G.backend = p.backend;
-          setLang(p.lang || "en", false);
-          document.body.classList.toggle("gapgpt", isGap());
-          if (isGap() && !G.gapModels) toIde({ type: "gapgptModels" });
-          setMode(p.permissionMode, false);
+          if (p.language && p.language !== G.lang) setLang(p.language, false);
           setModel(p.model, false);
-          setEffort(p.effort, false);
+          if (Array.isArray(p.models)) G.models = p.models;
           if (p.shareSelection !== undefined) G.shareSelectionSetting = p.shareSelection;
-          if (p.guardEnabled !== undefined) G.guardEnabled = p.guardEnabled;
           if (p.autoFollow !== undefined) G.autoFollow = p.autoFollow;
-          setGuardUi();
+          if (p.useGraphify !== undefined) G.useGraphify = p.useGraphify;
+          renderGraphify();
           document.body.classList.toggle("light", !p.dark);
           renderInfo();
           renderCtx();
-          // Tells the IDE the push direction works; it logs this, so a missing line pinpoints
-          // a one-way bridge rather than leaving a silently empty panel to guess about.
-          toIde({ type: "initApplied", viewport: viewportSize() });
           break;
         }
+        case "models":
+          G.modelsLoading = false;
+          G.modelsError = p.error || "";
+          if (Array.isArray(p.items)) G.models = p.items;
+          // Re-open the model menu so the new list (or the error) shows right away.
+          if (menuAnchor === $("ddModel")) modelMenu($("ddModel"));
+          break;
         case "context":
           G.ctx = p && p.file ? p : null;
           renderCtx();
           break;
-        case "gapgptStatus":
-          onGapStatus(p);
-          break;
-        case "gapgptModels":
-          G.gapModels = p.items || null;
-          G.gapModelsError = p.error || "";
-          if (menuAnchor && menuAnchor.id === "ddModel") gapModelMenu(menuAnchor);
-          break;
-        case "account":
-          G.account = p;
+        case "keyStatus":
+          G.hasKey = !!p.hasKey;
           renderInfo();
-          if (G.view === "session") renderSession();
           break;
-        case "claude":
-          if (c) onClaude(c, p.event || {});
+        case "delta":
+          if (c) onDelta(c, String(p.text || ""));
           break;
-        case "stderr":
-          if (c) {
-            c.stderr.push(p.text);
-            if (c.stderr.length > 30) c.stderr.shift();
-          }
+        case "done":
+          if (c) onDone(c, p);
+          break;
+        case "busy":
+          if (c) setBusy(c, !!p.busy);
           break;
         case "error": {
           const cc = c || chat();
-          notice(cc, cc.main, p.text, "error");
-          cc.failed = true;
-          setBusy(cc, false);
+          if (cc) onError(cc, String(p.text || ""));
           break;
         }
-        case "exit":
-          if (!c) break;
-          if (!p.gotResult && p.code !== 0) {
-            const tail = c.stderr.slice(-8).join("\n");
-            notice(c, c.main, (p.code === 143 || p.code === 137 || (p.code === 1 && !tail) ? "⎿  متوقف شد." : "claude با کد " + p.code + " خارج شد.") +
-              (tail ? "\n\n" + tail : "") + (/login|auth|api key|401/i.test(tail) ? "\n\nیک بار در ترمینال دستور «claude» را اجرا و وارد حساب خود شوید." : ""),
-              tail ? "error" : "warn");
-            c.failed = !!tail;
-          }
-          Object.keys(c.perms).forEach((id) => resolvePermission(c, { id, outcome: "denied" }));
-          Object.values(c.tools).forEach((t) => {
-            if (t.el.classList.contains("running")) {
-              t.el.classList.remove("running");
-              t.el.classList.add("error");
-            }
-          });
-          Object.values(c.agents).forEach((a) => {
-            if (a.status === "running") {
-              a.status = "error";
-              a.ended = Date.now();
-            }
-          });
-          c.main.turn = null;
-          c.usage.outTok += Math.round(c.usage.turnOut + (c.usage.cur ? c.usage.cur.out : 0));
-          c.usage.reasoning += Math.round(c.usage.turnReason + (c.usage.cur ? c.usage.cur.reason : 0));
-          c.usage.turnOut = c.usage.turnReason = 0;
-          c.usage.cur = null;
-          if (c === chat()) renderInfo();
-          setBusy(c, false);
-          if (c === chat()) {
-            renderSubTabs();
-            inputEl.focus();
+        case "toolStart":
+          if (c) onToolStart(c, p);
+          break;
+        case "toolApproval":
+          if (c) onToolApproval(c, p);
+          break;
+        case "toolEnd":
+          if (c) onToolEnd(c, p);
+          break;
+        case "todos":
+          if (c) renderTodos(c, p.items || []);
+          break;
+        case "planMode":
+          if (c) {
+            c.plan = !!p.value;
+            if (c === chat()) renderMode();
           }
           break;
-        case "permission":
-          if (c) showPermission(c, p);
+        case "sessions":
+          if (c) showSessions(c, p);
           break;
-        case "permissionResolved":
-          if (c) resolvePermission(c, p);
+        case "transcript":
+          if (c) renderTranscript(c, p);
+          break;
+        case "contextSize":
+          if (c) {
+            c.ctx = { tokens: p.tokens || 0, limit: p.limit || 0 };
+            if (c === chat()) renderInfo();
+          }
+          break;
+        case "status":
+          if (c) chatStatus(c, String(p.text || ""));
+          break;
+        case "notice":
+          if (c) notice(c, c.main, String(p.text || ""), p.kind || "");
           break;
         case "fileResults":
           showMention(p);
@@ -2006,25 +1382,11 @@
           break;
         case "externalSend":
           switchView("chat");
-          send(p.text);
-          break;
-        case "sessionInfo":
-          if (c) {
-            c.sessionInfo = p;
-            if (p.version && !c.version) c.version = p.version;
-            if (G.view === "session" && c === chat()) renderSession();
-          }
+          send(p.text, false);
           break;
         case "git":
           G.git = p;
           if (G.view === "git") renderGit();
-          break;
-        case "guard":
-          G.guard = p;
-          G.guardEnabled = p.enabled;
-          setGuardUi();
-          if (G.view === "guard") renderGuardBody();
-          else guardTabCount(p);
           break;
         case "log":
           G.logLines = p.lines || [];
@@ -2036,87 +1398,56 @@
           if (G.logLines.length > 2000) G.logLines.shift();
           if (G.view === "log") renderLogBody();
           break;
-        case "usage":
-          (p.windows || []).forEach((w) => {
-            const l = G.limits[w.label] || (G.limits[w.label] = {});
-            l.pct = w.percent;
-            const at = parseResetText(w.resets);
-            if (at) l.resetsAt = at;
-            l.resetText = w.resets;
-          });
-          if (p.insights) G.usageInsights = p.insights;
-          renderInfo();
-          if (G.view === "session") renderSession();
-          break;
         case "skills":
-          G.skills = p;
+          G.skills = p.items || [];
           if (G.view === "skills") renderSkills();
           break;
         case "rules":
-          G.rules = p;
+          G.rules = p.items || [];
           if (G.view === "rules") renderRules();
           break;
-        case "vulnInventory":
-          G.vulnInv = p;
-          if (G.view === "vulns") renderVulns();
+        case "instructionsPreview":
+          G.importPreview = { items: p.items || [] };
+          G.importNote = null;
+          refreshImportUi();
           break;
-        case "vulnResult":
-          G.vulnBusy = false;
-          G.vulnRes = p;
-          if (G.view === "vulns") renderVulns();
+        case "instructionsImported": {
+          const skipped = p.skipped || [];
+          G.importPreview = null;
+          G.importNote = tr("Copied " + (p.moved || 0) + " item(s) into .gapgpt.", (p.moved || 0) + " مورد در .gapgpt کپی شد.") +
+            (skipped.length ? tr(" Skipped: ", " رد شد: ") + skipped.map((x) => x.name + " (" + x.reason + ")").join("، ") : "");
+          refreshImportUi();
           break;
+        }
       }
     },
   };
 
   // ==================================================================== user input
-  function send(text) {
+  function send(text, expandRefs) {
     text = (text || "").trim();
     const c = chat();
     if (!text || !c || c.busy) return;
     if (text === "/clear" || text === "/new") return clearChat(c);
-    c.viewAgent = null;
+    if (text === "/resume") {
+      inputEl.value = "";
+      closeSlash();
+      return openResume();
+    }
     addUser(c.main, text);
     if (!c.title) c.title = text.replace(/\s+/g, " ").slice(0, 60);
-    c.stderr = [];
     c.failed = false;
-    setBusy(c, true, "در حال فکر کردن…");
+    c.usage.liveChars = 0;
+    c.main.block = null;
+    setBusy(c, true, thinking());
     refreshChatUi();
     closeMention();
     closeSlash();
-    toIde({ type: "send", chat: c.id, text, shareContext: c.shareCtx });
-  }
-
-  /** Interface language (UI chrome only; messages can be written and answered in either language). */
-  function setLang(l, notify) {
-    G.lang = l === "fa" ? "fa" : "en";
-    if (window.I18N) window.I18N.setLang(G.lang);
-    const b = $("btnLang");
-    b.querySelector(".lbl").textContent = G.lang === "fa" ? "FA" : "EN";
-    updateInputDir();
-    if (notify) toIde({ type: "setLanguage", value: G.lang });
-    renderInfo();
-  }
-
-  /** Fills [el] with one block per line, each with its own text direction. */
-  function setDirLines(el, text) {
-    el.textContent = "";
-    String(text || "").split("\n").forEach((line) => {
-      const div = document.createElement("div");
-      div.dir = textDir(line);
-      div.textContent = line || "\u200b";
-      el.appendChild(div);
-    });
-  }
-
-  /** The composer follows what is being typed (majority of letters), so the caret never jumps mid-word. */
-  function updateInputDir() {
-    const d = textDir(inputEl.value);
-    inputEl.dir = d === "auto" ? (G.lang === "fa" ? "rtl" : "ltr") : d;
+    toIde({ type: "send", chat: c.id, text, shareContext: c.shareCtx, expandRefs: expandRefs !== false, plan: !!c.plan });
   }
 
   function autoGrow() {
-    updateInputDir();
+    inputEl.dir = textDir(inputEl.value, uiDir());
     inputEl.style.height = "auto";
     inputEl.style.height = Math.min(inputEl.scrollHeight + 2, window.innerHeight * 0.4) + "px";
   }
@@ -2129,6 +1460,10 @@
   inputEl.addEventListener("click", updateMention);
   inputEl.addEventListener("blur", () => setTimeout(() => { closeMention(); closeSlash(); }, 150));
   inputEl.addEventListener("keydown", (e) => {
+    if (e.key === "Tab" && e.shiftKey && !e.isComposing) {
+      e.preventDefault();
+      return togglePlan();
+    }
     const sl = G.slash;
     if (sl.open && !e.isComposing) {
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -2166,13 +1501,6 @@
         return closeMention();
       }
     }
-    if (e.key === "Tab" && e.shiftKey) {
-      e.preventDefault();
-      const cycle = ["default", "acceptEdits", "plan", "bypassPermissions"];
-      return setMode(cycle[(cycle.indexOf(G.permissionMode) + 1) % cycle.length], true);
-    }
-    const card = firstPendingCard();
-    if (card && !inputEl.value.trim() && /^[123۱۲۳]$|^Escape$/.test(e.key)) return permKey(card, e);
     if (e.key !== "Enter" || e.isComposing) return;
     const wantsSend = G.sendOnEnter ? !e.shiftKey : e.ctrlKey || e.metaKey;
     if (wantsSend) {
@@ -2198,14 +1526,75 @@
       return;
     }
     if (e.target.closest && e.target.closest("#menu")) return;
-    const card = e.target.closest && e.target.closest(".perm");
-    if (card && !e.target.classList.contains("reason")) return permKey(card, e);
-    if (card && e.target.classList.contains("reason") && (e.key === "Enter" || e.key === "Escape")) {
-      e.preventDefault();
-      return permAct(card, "deny");
-    }
     const c = chat();
-    if (e.key === "Escape" && !e.defaultPrevented && c && c.busy && !firstPendingCard()) toIde({ type: "stop", chat: c.id });
+    if (e.key === "Escape" && !e.defaultPrevented && c && c.busy) toIde({ type: "stop", chat: c.id });
+  });
+
+  // ---------------------------------------------------------------- language
+  /** Static texts of chat.html: [selector, attribute ("" = text), English, Persian]. */
+  const STATIC = [
+    ["#btnNewChat", "title", "New chat", "گفتگوی جدید"],
+    ["#btnSettings", "title", "Settings", "تنظیمات"],
+    ["#searchInput", "placeholder", "Search in chat… (Enter: next)", "جستجو در گفتگو… (Enter: بعدی)"],
+    ["#searchPrev", "title", "Previous", "قبلی"],
+    ["#searchNext", "title", "Next", "بعدی"],
+    ["#searchClose", "title", "Close", "بستن"],
+    ['#viewTabs [data-view="chat"]', "", "Chat", "گفتگو"],
+    ['#viewTabs [data-view="log"]', "", "Log", "لاگ"],
+    ['#viewTabs [data-view="skills"]', "", "Skills", "اسکیل‌ها"],
+    ['#viewTabs [data-view="rules"]', "", "Rules", "قوانین"],
+    ["#btnNewChat2", "title", "New chat", "گفتگوی جدید"],
+    ["#btnSearch", "title", "Search in chat", "جستجو در گفتگو"],
+    ["#btnMore", "title", "More", "بیشتر"],
+    ["#btnMore2", "title", "More", "بیشتر"],
+    ["#input", "placeholder", "Ask GapGPT, or type / for skills and @ for files", "از GapGPT بپرسید، یا / برای اسکیل‌ها و @ برای فایل‌ها"],
+    ["#btnAttach", "title", "Add files, folders or images", "افزودن فایل، پوشه یا تصویر"],
+    ["#ddModel", "title", "Model", "مدل"],
+    ["#btnLang", "title", "Language (English / فارسی)", "زبان (فارسی / English)"],
+    ["#btnSend", "title", "Send (Enter)", "ارسال (Enter)"],
+    ["#btnStop", "title", "Stop (Esc)", "توقف (Esc)"],
+    ["#statusText", "", "Thinking…", "در حال فکر کردن…"],
+  ];
+
+  /** Switches the whole UI between English and Persian (direction, texts and the open view). */
+  function setLang(l, notify) {
+    G.lang = l === "fa" ? "fa" : "en";
+    const root = document.documentElement;
+    root.lang = G.lang;
+    root.dir = uiDir();
+    STATIC.forEach(([sel, attr, en, fa]) => {
+      const el = document.querySelector(sel);
+      if (!el) return;
+      if (attr) el.setAttribute(attr, tr(en, fa));
+      else el.textContent = tr(en, fa);
+    });
+    $("btnLang").querySelector(".lbl").textContent = G.lang === "fa" ? "FA" : "EN";
+    autoGrow();
+    document.querySelectorAll(".welcome-wrap").forEach(fillWelcome);
+    setModel(G.model, false);
+    renderGraphify();
+    // Views that build their skeleton once are rebuilt in the new language on the next render.
+    skillsBuilt = logBuilt = false;
+    ["view-skills", "view-log"].forEach((id) => ($(id).innerHTML = ""));
+    closeMenu();
+    refreshChatUi();
+    if (G.view !== "chat") renderView();
+    if (notify) toIde({ type: "setLanguage", value: G.lang });
+  }
+  function langMenu(anchor) {
+    showMenu(anchor, [
+      { label: "English", desc: tr("Interface in English", "رابط کاربری انگلیسی"), checked: G.lang === "en", onClick: () => setLang("en", true) },
+      { label: "فارسی", desc: tr("Interface in Persian (right-to-left)", "رابط کاربری فارسی (راست‌به‌چپ)"), checked: G.lang === "fa", onClick: () => setLang("fa", true) },
+      { sep: true },
+      { header: tr("You can write in either language; the assistant answers in the language you write in.",
+        "به هر دو زبان می‌توانید بنویسید؛ دستیار به همان زبان پیام شما جواب می‌دهد.") },
+    ]);
+  }
+
+  // Every text field picks its direction from what is typed (also Persian text that starts with an English word).
+  document.addEventListener("input", (e) => {
+    const t = e.target;
+    if (t !== inputEl && t.matches && t.matches("textarea, input:not([type]), input[type=text], input[type=search]")) t.dir = textDir(t.value, uiDir());
   });
 
   // ---------------------------------------------------------------- buttons
@@ -2227,7 +1616,6 @@
   $("btnSettings").addEventListener("click", () => toIde({ type: "settings" }));
   $("btnSearch").addEventListener("click", openSearch);
   $("btnGit").addEventListener("click", () => switchView("git"));
-  $("btnGuard").addEventListener("click", () => switchView("guard"));
   const menuBtn = (id, fn) => $(id).addEventListener("click", (e) => {
     e.stopPropagation();
     if (menuAnchor === e.currentTarget) return closeMenu();
@@ -2236,13 +1624,13 @@
   menuBtn("btnMore", moreMenu);
   menuBtn("btnMore2", moreMenu);
   menuBtn("btnAttach", attachMenu);
-  $("btnLang").addEventListener("click", () => setLang(G.lang === "fa" ? "en" : "fa", true));
   menuBtn("ddModel", modelMenu);
-  menuBtn("ddMode", modeMenu);
-  menuBtn("ddEffort", effortMenu);
+  menuBtn("btnLang", langMenu);
   $("searchNext").addEventListener("click", () => findNext(false));
   $("searchPrev").addEventListener("click", () => findNext(true));
   $("searchClose").addEventListener("click", () => $("searchBar").classList.add("hidden"));
+  $("modeChip").addEventListener("click", togglePlan);
+  $("graphifyChip").addEventListener("click", toggleGraphify);
   $("ctxChip").addEventListener("click", () => {
     const c = chat();
     if (c) c.shareCtx = !c.shareCtx;
@@ -2259,15 +1647,6 @@
     (id === "mention" ? acceptMention : acceptSlash)(+it.getAttribute("data-idx"));
   }));
 
-  function showAgent(c, aid) {
-    c.viewAgent = aid || null;
-    switchView("chat");
-    refreshChatUi();
-    const T = c.viewAgent ? c.agents[c.viewAgent].T : c.main;
-    if (c.viewAgent && !T.el.children.length) T.el.innerHTML = '<div class="notice">هنوز پیامی از این زیرعامل نیامده.</div>';
-    scrollDown(T, true);
-  }
-
   document.addEventListener("click", (e) => {
     const t = e.target;
     if (!t.closest("#menu")) closeMenu();
@@ -2278,26 +1657,7 @@
       switchView("chat");
       return activate(tab.dataset.chat);
     }
-    const sub = t.closest("#subTabs .pill");
-    if (sub) return showAgent(chat(), sub.dataset.agent);
-    const openAgent = t.closest("[data-open-agent]");
-    if (openAgent) return showAgent(chat(), openAgent.dataset.openAgent);
-    const permBtn = t.closest("[data-perm]");
-    if (permBtn) return permAct(permBtn.closest(".perm"), permBtn.getAttribute("data-perm"));
-    if (t.getAttribute("data-open")) return toIde({ type: "openFile", path: t.getAttribute("data-open"), line: 0 });
-    if (t.classList.contains("more")) {
-      const full = t.nextElementSibling;
-      if (full) full.classList.remove("hidden");
-      return t.remove();
-    }
     if (t.classList.contains("sugg")) return send(t.textContent);
-    if (t.closest("[data-usage-refresh]")) return requestUsage(true);
-    const fam = t.closest("[data-model-family]");
-    if (fam) {
-      const f = fam.dataset.modelFamily;
-      G.modelOpen[f] = !G.modelOpen[f];
-      return modelMenu(menuAnchorFor("ddModel"));
-    }
     const rs = t.closest("[data-run-skill]");
     if (rs) {
       switchView("chat");
@@ -2308,11 +1668,18 @@
     }
     const op = t.closest("[data-open-path]");
     if (op) return toIde({ type: "openFile", path: op.dataset.openPath, line: 0 });
-    if (t.closest("[data-run-init]")) return sendFromView("/init");
-    const cp = t.closest("[data-create-path]");
-    if (cp) return toIde({ type: "createFile", path: cp.dataset.createPath, content: "# CLAUDE.md\n\n" });
-    const ga = t.closest("[data-git-ask]");
-    if (ga) return gitAsk(ga.dataset.gitAsk);
+    if (t.closest("[data-import-scan]")) return requestImportScan();
+    if (t.closest("[data-import-cancel]")) {
+      G.importPreview = null;
+      G.importNote = null;
+      return refreshImportUi();
+    }
+    if (t.closest("[data-import-confirm]")) {
+      G.importNote = tr("Copying…", "در حال کپی…");
+      G.importPreview = null;
+      refreshImportUi();
+      return toIde({ type: "importInstructions" });
+    }
     const ia = t.closest("[data-ide-action]");
     if (ia) return toIde({ type: "ideAction", id: ia.dataset.ideAction });
     if (t.closest("[data-git-refresh]")) {
@@ -2320,16 +1687,6 @@
       renderGit();
       return toIde({ type: "git" });
     }
-    const gt = t.closest("[data-gtab]");
-    if (gt) {
-      G.guardTab = gt.dataset.gtab;
-      return renderGuardBody();
-    }
-    const gw = t.closest("[data-gwhite]");
-    if (gw) return toIde({ type: "guardWhitelist", target: gw.dataset.gwhite });
-    const gu = t.closest("[data-gunwhite]");
-    if (gu) return toIde({ type: "guardUnwhitelist", target: gu.dataset.gunwhite });
-    if (t.dataset.grule) return toIde({ type: "guardRule", id: t.dataset.grule, enabled: t.checked });
     const lf = t.closest("[data-lfilter]");
     if (lf) {
       G.logFilter = lf.dataset.lfilter;
@@ -2365,38 +1722,8 @@
   });
 
   window.addEventListener("resize", closeMenu);
-  setInterval(renderInfo, 60000); // keep "resets in" fresh
-  setInterval(() => requestUsage(true), 5 * 60000);
 
+  setLang("en", false);
   newChat();
   inputEl.focus();
-
-  // Tell the IDE the page is live. This — not CefLoadHandler.onLoadEnd — is what makes the IDE
-  // flush its queued messages and send "init"; onLoadEnd is only a backup trigger, because in
-  // out-of-process JCEF it is easy to miss. Repeat it a few times in case the IDE side attaches
-  // its handler slightly later; the IDE treats "ready" as idempotent.
-  // Reports how large the page believes it is. If this stays at the panel's original width while
-  // the tool window is resized, the browser surface is not following the Swing component — the
-  // symptom being that the UI looks frozen in a narrow column.
-  function viewportSize() {
-    return window.innerWidth + "x" + window.innerHeight + " @" + (window.devicePixelRatio || 1) + "x";
-  }
-  let lastViewport = "";
-  // Polled rather than driven by the "resize" event: when CEF renders offscreen the page is
-  // resized behind the event's back, so the listener alone never fires. Only a real change is
-  // reported, so this stays quiet while the panel is left alone.
-  setInterval(() => {
-    const v = viewportSize();
-    if (v === lastViewport) return;
-    const first = lastViewport === "";
-    lastViewport = v;
-    if (!first) toIde({ type: "viewport", viewport: v });
-  }, 1000);
-
-  toIde({ type: "ready" });
-  let readyTries = 0;
-  const readyPing = setInterval(() => {
-    if (G.inited || ++readyTries > 10) return clearInterval(readyPing);
-    toIde({ type: "ready" });
-  }, 500);
 })();
