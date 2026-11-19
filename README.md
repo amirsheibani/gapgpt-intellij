@@ -2,6 +2,10 @@
 
 یک پنل گفتگو و ایجنت برنامه‌نویسی که با مدل‌های **گپ‌جی‌پی‌تی** (`api.gapgpt.app`) کار می‌کند: GPT، Claude، Gemini، DeepSeek، Grok، Qwen و بقیه. داخل IntelliJ IDEA، PyCharm، WebStorm، Android Studio و بقیهٔ IDEهای JetBrains اجرا می‌شود و متن فارسی، راست‌به‌چپ و متن‌های ترکیبی فارسی/انگلیسی را درست نشان می‌دهد.
 
+![پنل گفتگوی GapGPT](screen.png)
+
+![ایجنت برنامه‌نویسی GapGPT در حال کار با ابزارها](screen_2.png)
+
 **اولین بار است؟** از [راهنمای شروع](docs/getting-started.md) شروع کنید. گرفتن کلید API، نصب، تنظیم و اولین گفتگو را قدم‌به‌قدم توضیح می‌دهد.
 
 ## امکانات
@@ -25,6 +29,37 @@
 - دکمهٔ **«کپی قوانین و اسکیل‌ها»** قوانین ابزارهای دیگر را در `.gapgpt/` کپی می‌کند و فایل‌های اصلی دست نمی‌خورند
 - **بدون تداخل با ابزارهای دیگر:** فایل‌های Claude Code، Cursor، Copilot و بقیه (`AGENTS.md`، `CLAUDE.md`، `.claude/`، `.mcp.json`، `graphify-out/`، `.git/hooks`) را نمی‌خواند و تغییر نمی‌دهد
 - کلید API در Password Safe خود IDE ذخیره می‌شود، نه در فایل تنظیمات یا لاگ
+
+## چطور کار می‌کند
+
+وقتی پیامی می‌فرستید، این جریان اتفاق می‌افتد:
+
+<div dir="ltr">
+
+```
+chat.js  ──send {chat,text}──►  ChatPanel.sendMessage
+                                   │ skill expand / @file refs / IDE context / ي→ی
+                                   │ Conversation.snapshot(systemPrompt)
+                                   ▼
+                              GapGptClient.send()   (pooled thread)
+                                   │ POST {baseUrl}/chat/completions
+                                   │ Authorization: Bearer <PasswordSafe>
+                                   ▼
+                       SSE (data: …) or JSON reply
+                                   │
+chat.js  ◄── delta / done / error / busy ──┘
+```
+
+</div>
+
+1. **ساخت درخواست:** پنل چت، system prompt را از قوانین پروژه (`.gapgpt/AGENTS.md` و `rules/`)، state راهنماها و دستورالعمل‌های IDE می‌سازد؛ اسکیل‌های `/نام` باز می‌شوند؛ ارجاع‌های `@فایل` به محتوای فایل تبدیل می‌شوند و زمینهٔ فعلی ویرایشگر (فایل/انتخاب) ضمیمه می‌شود.
+2. **ارسال به API:** `GapGptClient.send()` درخواست `POST {baseUrl}/chat/completions` را با هدر `Authorization: Bearer <key>` می‌فرستد. کلید فقط از `ApiKeyStore`، یعنی PasswordSafe خود IDE، خوانده می‌شود و هیچ‌وقت لاگ نمی‌شود.
+3. **پاسخ زنده:** پاسخ به‌صورت SSE (`text/event-stream`) قطعه‌قطعه می‌آید و در webview با markdown و RTL نمایش داده می‌شود. دکمهٔ توقف درخواست در جریان را لغو می‌کند.
+4. **اجرای ابزارها:** اگر مدل ابزاری بخواهد (مثلاً خواندن یک فایل یا جستجو در کد)، ایجنت آن را اجرا و نتیجه را دوباره به مدل می‌دهد؛ تا «حداکثر گام در هر پیام» ادامه می‌یابد. ابزارهای فقط‌خواندنی بدون پرسش اجرا می‌شوند؛ **ویرایش فایل و اجرای دستور فقط با تأیید شما** و نمایش diff انجام می‌شود.
+5. **مصرف و هزینه:** بعد از هر پاسخ، تعداد توکن‌ها و هزینهٔ تخمینی (دلار) زیر پاسخ می‌آید و مصرف هر مدل روی همین دستگاه ذخیره می‌شود؛ `/usage` هم اعتبار حساب و هم جدول مصرف را نشان می‌دهد.
+6. **حافظه:** تاریخچهٔ هر گفتگو (تا ۲۰۰ پیام/۶۰۰ هزار نویسه) ذخیره می‌شود و در صورت پر شدن، خودکار خلاصه‌سازی می‌شود تا context از بودجه بیرون نزند. با `/resume` گفتگوی قبلی را ادامه می‌دهید.
+
+جزئیات فنی API در [docs/gapgpt-api.md](docs/gapgpt-api.md) و جزئیات ابزارهای ایجنت در [docs/chat-agent.md](docs/chat-agent.md).
 
 ## پیش‌نیاز
 1. یک **کلید API** از [gapgpt.app/platform-v2/tokens](https://gapgpt.app/platform-v2/tokens) و مقداری اعتبار در حساب. جزئیات در [راهنمای شروع](docs/getting-started.md).

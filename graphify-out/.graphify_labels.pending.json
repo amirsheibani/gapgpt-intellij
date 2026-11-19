@@ -1,12 +1,12 @@
 {
   "0": "ChatPanel.kt",
   "1": "chat.js",
-  "2": "ایجنت چت",
+  "2": "راهنمای شروع GapGPT",
   "3": "Conversation",
   "4": "McpConfig.kt",
   "5": "SelectionActions.kt",
   "6": "McpClient.kt",
-  "7": "GapGptConfigurable.kt",
+  "7": "ایجنت چت",
   "11": "McpManager",
   "12": "ImportInstructionsAction.kt",
   "13": "SelectionTracker.kt",
@@ -27,7 +27,7 @@
   "28": "Listener",
   "29": "New feature checklist",
   "30": "Task workflow: plan → approve → implement → review → document",
-  "31": "New feature checklist",
+  "31": "ApiKeyStore.kt",
   "32": "GapGptPricing",
   "33": "Confirm before edit",
   "34": "Confirm before edit",
@@ -36,7 +36,7 @@
   "37": "GitInfo.kt",
   "38": "Document",
   "39": "AgentTools.kt",
-  "40": "project-memory-2.md",
+  "40": "ارتباط با API گپ‌جی‌پی‌تی",
   "41": "PersistentStateComponent",
   "42": "PluginLog",
   "43": "graphify.md",
@@ -90,5 +90,8 @@
   "91": "Volatile",
   "92": "JsonArray",
   "93": "Disposable",
-  "94": "VirtualFile"
+  "94": "VirtualFile",
+  "95": "قوانین، اسکیل‌ها و دکمهٔ کپی",
+  "96": "chat-agent.md",
+  "97": "project-memory-2.md"
 }

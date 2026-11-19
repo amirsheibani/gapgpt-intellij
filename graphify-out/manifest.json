@@ -54,9 +54,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1795086185.0555596,
-    "seen": 1795086240.1106791,
-    "ast_hash": "7f839079abf559e071737e316c3bf615",
+    "mtime": 1795090074.5641825,
+    "seen": 1795090100.245146,
+    "ast_hash": "a44f03ab2fb71af2ce2d735fb837915b",
     "semantic_hash": ""
   },
   "src/main/resources/webview/Vazirmatn-OFL.txt": {
@@ -245,12 +245,6 @@
     "ast_hash": "334fdae8e8517daff71556db2f475e0a",
     "semantic_hash": ""
   },
-  ".arvanai/rules/project-memory-2.md": {
-    "mtime": 1794838959.5657704,
-    "seen": 1795086240.11066,
-    "ast_hash": "67d88e9d0760c3ba54c75dfd9551c1c5",
-    "semantic_hash": ""
-  },
   ".claude/rules/graphify.md": {
     "mtime": 1795086029.5602512,
     "seen": 1795086240.110661,
@@ -384,15 +378,33 @@
     "semantic_hash": ""
   },
   "docs/getting-started.md": {
-    "mtime": 1795086165.2554886,
-    "seen": 1795086240.110682,
-    "ast_hash": "a211d6776a2782d03b9338298b926098",
+    "mtime": 1795087854.6223845,
+    "seen": 1795090100.2451499,
+    "ast_hash": "17555f2bf18a8002921a388561369e2d",
     "semantic_hash": ""
   },
   "docs/instructions-import.md": {
     "mtime": 1795086165.256415,
     "seen": 1795086240.110683,
     "ast_hash": "552db0e1f085bf94a4dad64ddbfdc0fd",
+    "semantic_hash": ""
+  },
+  ".gapgpt/rules/project-memory-2.md": {
+    "mtime": 1794838959.5657704,
+    "seen": 1795090100.245139,
+    "ast_hash": "67d88e9d0760c3ba54c75dfd9551c1c5",
+    "semantic_hash": ""
+  },
+  "screen.png": {
+    "mtime": 1795088963.2419481,
+    "seen": 1795090100.245153,
+    "ast_hash": "02df118cb99ff6e9d43a3a347272325e",
+    "semantic_hash": ""
+  },
+  "screen_2.png": {
+    "mtime": 1795089261.9770346,
+    "seen": 1795090100.2451541,
+    "ast_hash": "83dcf4148ef8ef5ca99a2b6665d86a9f",
     "semantic_hash": ""
   }
 }
