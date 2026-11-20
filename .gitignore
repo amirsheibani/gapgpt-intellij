@@ -5,3 +5,6 @@ build/
 out/
 .intellijPlatform/
 .kotlin/
+.DS_Store
+.claude/settings.local.json
+graphify-out/cache/

@@ -1,5 +1,7 @@
 # GapGPT — دستیار و ایجنت هوش مصنوعی گپ‌جی‌پی‌تی داخل IDEهای JetBrains
 
+> **English:** AI coding agent and chat for JetBrains IDEs with full Persian/RTL support, powered by GapGPT. [Read the English README →](README.en.md)
+
 یک پنل گفتگو و ایجنت برنامه‌نویسی که با مدل‌های **گپ‌جی‌پی‌تی** (`api.gapgpt.app`) کار می‌کند: GPT، Claude، Gemini، DeepSeek، Grok، Qwen و بقیه. داخل IntelliJ IDEA، PyCharm، WebStorm، Android Studio و بقیهٔ IDEهای JetBrains اجرا می‌شود و متن فارسی، راست‌به‌چپ و متن‌های ترکیبی فارسی/انگلیسی را درست نشان می‌دهد.
 
 ![پنل گفتگوی GapGPT](screen.png)
