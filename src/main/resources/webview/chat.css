@@ -109,7 +109,23 @@ kbd { font-family: var(--mono); font-size: 0.85em; border: 1px solid var(--borde
 .dot.busy { background: var(--accent); animation: pulse 1s infinite; }
 .dot.ok { background: var(--ok); }
 .dot.err { background: var(--danger); }
+.dot.warn { background: var(--warn); }
 @keyframes pulse { 50% { opacity: 0.3; } }
+
+/* chat tabs: one row, scrolls horizontally */
+#topbar #chatTabs {
+  flex-wrap: nowrap; gap: 2px; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin;
+}
+#chatTabs::-webkit-scrollbar { height: 4px; }
+#chatTabs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+#chatTabs .pill {
+  flex: none; border: none; border-bottom: 2px solid transparent; border-radius: 6px 6px 0 0;
+  padding: 4px 10px; gap: 6px; background: transparent;
+}
+#chatTabs .pill:hover { background: var(--panel); }
+#chatTabs .pill.active { border-bottom-color: var(--accent); color: var(--fg); background: var(--accent-bg); }
+#chatTabs .pill.waiting { color: var(--fg); animation: tabblink 1s ease-in-out infinite; }
+@keyframes tabblink { 50% { background: rgba(226, 179, 64, 0.28); border-bottom-color: var(--warn); } }
 
 .subtabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 8px; border-bottom: 1px solid var(--border); }
 .subtabs .pill { font-weight: 500; }
@@ -222,6 +238,14 @@ kbd { font-family: var(--mono); font-size: 0.85em; border: 1px solid var(--borde
 .msg.user .prompt { color: var(--muted); font-family: var(--mono); flex: none; }
 .msg.user .text { white-space: pre-wrap; text-align: start; flex: 1; min-width: 0; overflow-wrap: break-word; }
 .msg.user .text > div { text-align: start; }
+.msg.user .uacts { display: flex; gap: 2px; flex: none; align-self: flex-start; opacity: 0; transition: opacity 0.15s; }
+.msg.user:hover .uacts, .msg.user .uacts:focus-within { opacity: 1; }
+.msg.user .uacts button {
+  border: none; background: transparent; color: var(--muted); cursor: pointer;
+  padding: 0 4px; font-size: 1em; line-height: 1.5; border-radius: 4px;
+}
+.msg.user .uacts button:hover { color: var(--fg); background: var(--panel); }
+#chatLogs.busy .msg.user .uacts button[data-uact="rerun"] { opacity: 0.35; cursor: default; pointer-events: none; }
 .row { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0; }
 .row > .bullet { display: none; }
 .row > .content { flex: 1; min-width: 0; }

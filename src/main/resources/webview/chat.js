@@ -434,14 +434,18 @@
   }
 
   function renderTabs() {
-    $("chatTabs").innerHTML = G.order.map((id) => {
+    const box = $("chatTabs");
+    box.innerHTML = G.order.map((id) => {
       const c = G.chats[id];
-      const dot = c.busy ? "busy" : c.failed ? "err" : "";
+      const waiting = !!(c.main && c.main.el.querySelector(".tool .approval"));
+      const dot = waiting ? "warn" : c.busy ? "busy" : c.failed ? "err" : "";
       const t = esc(c.title || tr("New chat", "گفتگوی جدید"));
-      return '<div class="pill' + (id === G.active ? " active" : "") + '" data-chat="' + id + '" title="' + t + '">' +
+      return '<div class="pill' + (waiting ? " waiting" : "") + (id === G.active ? " active" : "") + '" data-chat="' + id + '" title="' + t + '">' +
         '<span class="dot ' + dot + '"></span><span class="t" dir="' + textDir(c.title) + '">' + t + "</span>" +
         '<span class="x" data-close="' + id + '" title="' + tr("Close", "بستن") + '">×</span></div>';
     }).join("");
+    const act = box.querySelector(".pill.active");
+    if (act) act.scrollIntoView({ block: "nearest", inline: "nearest" });
   }
 
   // ==================================================================== rendering into a chat
@@ -473,6 +477,17 @@
       else ln.appendChild(document.createElement("br"));
       box.appendChild(ln);
     });
+    d._text = String(text);
+    const acts = document.createElement("span");
+    acts.className = "uacts";
+    [["copy", "⧉", tr("Copy", "کپی")], ["rerun", "↻", tr("Run again", "اجرای مجدد")]].forEach((b) => {
+      const btn = document.createElement("button");
+      btn.dataset.uact = b[0];
+      btn.textContent = b[1];
+      btn.title = b[2];
+      acts.appendChild(btn);
+    });
+    d.appendChild(acts);
     T.el.appendChild(d);
     T.turn = null;
     scrollDown(T, true);
@@ -549,6 +564,7 @@
     $("btnStop").classList.toggle("hidden", !b);
     $("status").classList.toggle("hidden", !b);
     $("infoState").classList.toggle("busy", b);
+    $("chatLogs").classList.toggle("busy", b);
     $("infoStateText").textContent = b ? tr("Running", "در حال اجرا") : tr("Idle", "آماده");
     if (b) setStatus(c.statusText || thinking());
   }
@@ -642,6 +658,7 @@
   /** Tool rows left open when a run ends (stopped or failed) lose their spinner and approval box. */
   function closeTools(c) {
     c.main.el.querySelectorAll(".tool .approval").forEach((e) => e.remove());
+    renderTabs();
     c.main.el.querySelectorAll(".tool.running").forEach((e) => {
       e.classList.remove("running");
       e.classList.add("error");
@@ -712,6 +729,7 @@
     const decide = (decision) => {
       toIde({ type: "toolDecision", chat: c.id, id: p.id, decision });
       box.remove();
+      renderTabs();
       chatStatus(c, decision === "deny" ? thinking() : tr("Running…", "در حال اجرا…"));
     };
     const btn = (label, cls, decision) => {
@@ -737,6 +755,7 @@
     }
     box.appendChild(row);
     d.appendChild(box);
+    renderTabs();
     chatStatus(c, tr("Waiting for your approval…", "در انتظار تأیید شما…"));
     scrollDown(c.main, true);
     if (c === chat()) first.focus();
@@ -746,7 +765,10 @@
     const d = c.tools && c.tools[p.id];
     if (!d) return;
     const ap = d.querySelector(".approval");
-    if (ap) ap.remove();
+    if (ap) {
+      ap.remove();
+      renderTabs();
+    }
     d.classList.remove("running");
     d.classList.add(p.ok ? "done" : "error");
     const r = document.createElement("div");
@@ -1652,6 +1674,17 @@
     if (!t.closest("#menu")) closeMenu();
     const closeX = t.closest("[data-close]");
     if (closeX) return closeChat(closeX.dataset.close);
+    const uact = t.closest("[data-uact]");
+    if (uact) {
+      const m = uact.closest(".msg.user");
+      if (!m || typeof m._text !== "string") return;
+      if (uact.dataset.uact === "copy") {
+        toIde({ type: "copy", text: m._text });
+        uact.textContent = "✓";
+        setTimeout(() => (uact.textContent = "⧉"), 1000);
+      } else if (uact.dataset.uact === "rerun") send(m._text);
+      return;
+    }
     const tab = t.closest("#chatTabs .pill");
     if (tab) {
       switchView("chat");

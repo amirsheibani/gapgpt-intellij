@@ -18,45 +18,45 @@
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/actions/SelectionActions.kt": {
-    "mtime": 1795086029.7496047,
-    "seen": 1795086240.110635,
+    "mtime": 1795158292.9199939,
+    "seen": 1795272028.312014,
     "ast_hash": "1f95549f18063d91afd56bc746870819",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/settings/GapGptConfigurable.kt": {
-    "mtime": 1795087517.2923474,
-    "seen": 1795087523.62764,
+    "mtime": 1795158292.951322,
+    "seen": 1795272028.312032,
     "ast_hash": "ba0a7d82d5f4966943e9a9f80c3ff491",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/settings/GapGptSettings.kt": {
-    "mtime": 1795087517.292803,
-    "seen": 1795087523.6276412,
+    "mtime": 1795158292.9530284,
+    "seen": 1795272028.312033,
     "ast_hash": "83a1075115945267be5b42636e6e4b2e",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/ui/ChatPanel.kt": {
-    "mtime": 1795087517.2956834,
-    "seen": 1795087523.6276422,
+    "mtime": 1795158292.9568303,
+    "seen": 1795272028.3120341,
     "ast_hash": "426b190486fecc6747d38f1c818a6262",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/ui/ChatToolWindowFactory.kt": {
-    "mtime": 1795086029.6769404,
-    "seen": 1795086240.110656,
+    "mtime": 1795158292.9585288,
+    "seen": 1795272028.312035,
     "ast_hash": "6f2dcbb3dec9e723b23d3f65306802a5",
     "semantic_hash": ""
   },
   "src/main/resources/webview/chat.js": {
-    "mtime": 1795087517.3025959,
-    "seen": 1795087523.627646,
-    "ast_hash": "4d3638a5898f201b46a2b00b0d799083",
+    "mtime": 1795272016.496426,
+    "seen": 1795272028.312038,
+    "ast_hash": "5b63a709abd3ad5c210d542b1160c79a",
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1795090074.5641825,
-    "seen": 1795090100.245146,
-    "ast_hash": "a44f03ab2fb71af2ce2d735fb837915b",
+    "mtime": 1795158314.1879926,
+    "seen": 1795272028.3120599,
+    "ast_hash": "084af72e0d2ea00deffaa03a0ff768df",
     "semantic_hash": ""
   },
   "src/main/resources/webview/Vazirmatn-OFL.txt": {
@@ -66,8 +66,8 @@
     "semantic_hash": "88985b4355a8a44627dde041f10aba75"
   },
   "src/main/resources/webview/chat.html": {
-    "mtime": 1795087517.299508,
-    "seen": 1795087523.627676,
+    "mtime": 1795158292.9660058,
+    "seen": 1795272028.312068,
     "ast_hash": "52578b3e7e0e97d57fc21afb9f97d74b",
     "semantic_hash": ""
   },
@@ -84,8 +84,8 @@
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/ide/SelectionTracker.kt": {
-    "mtime": 1795086029.65684,
-    "seen": 1795086240.110649,
+    "mtime": 1795158292.9424043,
+    "seen": 1795272028.312027,
     "ast_hash": "ff29d452d54fbce7e21b6cf92ab59016",
     "semantic_hash": ""
   },
@@ -102,8 +102,8 @@
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/ui/SlashCommands.kt": {
-    "mtime": 1795086184.320104,
-    "seen": 1795086240.110657,
+    "mtime": 1795158292.9601598,
+    "seen": 1795272028.312036,
     "ast_hash": "b2843714141619839ea67aca5c5f9b5d",
     "semantic_hash": ""
   },
@@ -114,14 +114,14 @@
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/ide/GitInfo.kt": {
-    "mtime": 1795086029.6379392,
-    "seen": 1795086240.110646,
+    "mtime": 1795158292.9390247,
+    "seen": 1795272028.312025,
     "ast_hash": "a72530cbf73bf4fc12226f20cd609f23",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/api/GapGptPricing.kt": {
-    "mtime": 1795086184.2767398,
-    "seen": 1795086240.110639,
+    "mtime": 1795158292.928738,
+    "seen": 1795272028.312018,
     "ast_hash": "6e86343da410a2ba40d040a62dfedea3",
     "semantic_hash": ""
   },
@@ -156,255 +156,267 @@
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/I18n.kt": {
-    "mtime": 1795086029.6289427,
-    "seen": 1795086240.110632,
+    "mtime": 1795158292.9163277,
+    "seen": 1795272028.31201,
     "ast_hash": "527e73b98e238e38660aec441ba718df",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/actions/ImportInstructionsAction.kt": {
-    "mtime": 1795086029.723452,
-    "seen": 1795086240.110634,
+    "mtime": 1795158292.9182577,
+    "seen": 1795272028.3120131,
     "ast_hash": "57d6a6d28455961248507eba5e284da1",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/agent/AgentTools.kt": {
-    "mtime": 1795087517.2891293,
-    "seen": 1795087523.6276212,
+    "mtime": 1795158292.9228756,
+    "seen": 1795272028.312015,
     "ast_hash": "53c83b3bb1e2b1fecf137c3ca4df7155",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/agent/CodeTools.kt": {
-    "mtime": 1795086029.728708,
-    "seen": 1795086240.110637,
+    "mtime": 1795158292.9248877,
+    "seen": 1795272028.3120158,
     "ast_hash": "4c2084109c50b2fc7bae5ed341b83590",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/api/GapGptClient.kt": {
-    "mtime": 1795086133.1349623,
-    "seen": 1795086240.1106381,
+    "mtime": 1795158292.9272628,
+    "seen": 1795272028.312017,
     "ast_hash": "33d62c434ca2eabac76314d12c83394a",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/chat/Conversation.kt": {
-    "mtime": 1795086029.7162545,
-    "seen": 1795086240.110641,
+    "mtime": 1795158292.9307194,
+    "seen": 1795272028.31202,
     "ast_hash": "fdba19c88beb52b64d16a4c159fefe5e",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/chat/Prompts.kt": {
-    "mtime": 1795087517.2902794,
-    "seen": 1795087523.627628,
+    "mtime": 1795158292.9324296,
+    "seen": 1795272028.312021,
     "ast_hash": "2b7731dcdef3f51e6a32f5a42b4cf2a7",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/chat/SessionStore.kt": {
-    "mtime": 1795086029.6861548,
-    "seen": 1795086240.110643,
+    "mtime": 1795158292.9339087,
+    "seen": 1795272028.312022,
     "ast_hash": "da2b9dcc547d9ecc0b503eeb16d66da0",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/context/InstructionsImporter.kt": {
-    "mtime": 1795086029.701272,
-    "seen": 1795086240.1106439,
+    "mtime": 1795158292.9358985,
+    "seen": 1795272028.312023,
     "ast_hash": "d0e2ad0c84d1cdf8de1a26a1ba8c60ff",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/context/ProjectInstructions.kt": {
-    "mtime": 1795086029.696162,
-    "seen": 1795086240.110645,
+    "mtime": 1795158292.9373481,
+    "seen": 1795272028.312024,
     "ast_hash": "adff48ffec55a4cb8e919bab5771034b",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/ide/GraphifySetup.kt": {
-    "mtime": 1795087517.2912107,
-    "seen": 1795087523.6276329,
+    "mtime": 1795158292.94054,
+    "seen": 1795272028.312025,
     "ast_hash": "1581af5e03a3fcbc80b37a0fdb3e6504",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/mcp/McpClient.kt": {
-    "mtime": 1795086029.7101774,
-    "seen": 1795086240.11065,
+    "mtime": 1795158292.9448755,
+    "seen": 1795272028.312028,
     "ast_hash": "3cf0c0e08a441a19740b8603236415a0",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/mcp/McpConfig.kt": {
-    "mtime": 1795086029.7393708,
-    "seen": 1795086240.11065,
+    "mtime": 1795158292.9464128,
+    "seen": 1795272028.312029,
     "ast_hash": "6c4723baa889bc98a6e7410cc94b51fb",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/mcp/McpManager.kt": {
-    "mtime": 1795086029.7549784,
-    "seen": 1795086240.1106508,
+    "mtime": 1795158292.9479873,
+    "seen": 1795272028.3120298,
     "ast_hash": "6f7c634212aefb2a843ed168731582cc",
     "semantic_hash": ""
   },
   "src/main/kotlin/ir/gapgpt/settings/ApiKeyStore.kt": {
-    "mtime": 1795086133.1354008,
-    "seen": 1795086240.110652,
+    "mtime": 1795158292.949434,
+    "seen": 1795272028.312031,
     "ast_hash": "334fdae8e8517daff71556db2f475e0a",
     "semantic_hash": ""
   },
   ".claude/rules/graphify.md": {
-    "mtime": 1795086029.5602512,
-    "seen": 1795086240.110661,
+    "mtime": 1795158292.7018518,
+    "seen": 1795272028.312039,
     "ast_hash": "f36539ecc9af68f33ebd72770ce4a19e",
     "semantic_hash": ""
   },
   ".claude/rules/plugin-agent-workflow.md": {
-    "mtime": 1795086029.5598886,
-    "seen": 1795086240.110662,
+    "mtime": 1795158292.7036188,
+    "seen": 1795272028.3120399,
     "ast_hash": "a5ad2d3b6b96de3520ac2d3259d851ed",
     "semantic_hash": ""
   },
   ".claude/rules/plugin-confirm-before-edit.md": {
-    "mtime": 1795086029.559379,
-    "seen": 1795086240.110663,
+    "mtime": 1795158292.7049608,
+    "seen": 1795272028.312041,
     "ast_hash": "08e71ec7c6d2d6fb02c706ac9d8f3fa7",
     "semantic_hash": ""
   },
   ".claude/rules/plugin-donts.md": {
-    "mtime": 1795086029.559031,
-    "seen": 1795086240.110664,
+    "mtime": 1795158292.7067466,
+    "seen": 1795272028.312042,
     "ast_hash": "5662cfaf144102fe873e5ce0a99a9829",
     "semantic_hash": ""
   },
   ".claude/rules/plugin-git.md": {
-    "mtime": 1795086029.5605946,
-    "seen": 1795086240.1106648,
+    "mtime": 1795158292.7080572,
+    "seen": 1795272028.312043,
     "ast_hash": "f48cea68828611edf2a4e45e7fe19ed5",
     "semantic_hash": ""
   },
   ".claude/skills/debug-hypotheses/SKILL.md": {
-    "mtime": 1795086029.561346,
-    "seen": 1795086240.110666,
+    "mtime": 1795158292.710283,
+    "seen": 1795272028.312043,
     "ast_hash": "89234ad00a74ad480e211004aa1b46d9",
     "semantic_hash": ""
   },
   ".claude/skills/explore-feature/SKILL.md": {
-    "mtime": 1795086165.2566483,
-    "seen": 1795086240.110666,
+    "mtime": 1795158292.7122035,
+    "seen": 1795272028.3120441,
     "ast_hash": "0412ed64c37fbdb53e1f72c9edf8e7cc",
     "semantic_hash": ""
   },
   ".claude/skills/implement/SKILL.md": {
-    "mtime": 1795086029.5617785,
-    "seen": 1795086240.110667,
+    "mtime": 1795158292.7140946,
+    "seen": 1795272028.312045,
     "ast_hash": "cb228c49f4efae854e6c4df37312391c",
     "semantic_hash": ""
   },
   ".claude/skills/scaffold-feature/SKILL.md": {
-    "mtime": 1795086029.7942107,
-    "seen": 1795086240.110668,
+    "mtime": 1795158292.7160308,
+    "seen": 1795272028.312046,
     "ast_hash": "0a7ac30ff33ecc839efecafa92fdeb4d",
     "semantic_hash": ""
   },
   ".claude/skills/senior-review/SKILL.md": {
-    "mtime": 1795086029.5622063,
-    "seen": 1795086240.1106691,
+    "mtime": 1795158292.7181087,
+    "seen": 1795272028.312047,
     "ast_hash": "26278dd93da51eb7b4266579eaaed738",
     "semantic_hash": ""
   },
   ".gapgpt/rules/plugin-agent-workflow.md": {
-    "mtime": 1795086029.7988875,
-    "seen": 1795086240.11067,
+    "mtime": 1795158292.7202263,
+    "seen": 1795272028.3120482,
     "ast_hash": "38a5f6be23973d2518fcb7da5f63041d",
     "semantic_hash": ""
   },
   ".gapgpt/rules/plugin-confirm-before-edit.md": {
-    "mtime": 1795086029.5671384,
-    "seen": 1795086240.110671,
+    "mtime": 1795158292.7217393,
+    "seen": 1795272028.312049,
     "ast_hash": "e35cab303521c68109309ec04dd3c554",
     "semantic_hash": ""
   },
   ".gapgpt/rules/plugin-donts.md": {
-    "mtime": 1795086029.5665748,
-    "seen": 1795086240.110671,
+    "mtime": 1795158292.7231932,
+    "seen": 1795272028.3120499,
     "ast_hash": "c8c887fdfcd02f85090decc62e3e5b00",
     "semantic_hash": ""
   },
   ".gapgpt/rules/plugin-git.md": {
-    "mtime": 1795086029.568022,
-    "seen": 1795086240.1106718,
+    "mtime": 1795158292.7246327,
+    "seen": 1795272028.312051,
     "ast_hash": "cb6dffdce93a7d7337d5a5244aca3a25",
     "semantic_hash": ""
   },
   ".gapgpt/skills/debug-hypotheses/SKILL.md": {
-    "mtime": 1795086029.5688117,
-    "seen": 1795086240.110673,
+    "mtime": 1795158292.7278054,
+    "seen": 1795272028.312053,
     "ast_hash": "a5a3aa3af661efb5603dc4ca607545b5",
     "semantic_hash": ""
   },
   ".gapgpt/skills/explore-feature/SKILL.md": {
-    "mtime": 1795086165.256943,
-    "seen": 1795086240.110674,
+    "mtime": 1795158292.7296808,
+    "seen": 1795272028.312053,
     "ast_hash": "4ff1870173f28504d9ea15f44913a0e5",
     "semantic_hash": ""
   },
   ".gapgpt/skills/implement/SKILL.md": {
-    "mtime": 1795086029.5692546,
-    "seen": 1795086240.1106749,
+    "mtime": 1795158292.7316666,
+    "seen": 1795272028.312054,
     "ast_hash": "610d748acac569560bcbad61f7488254",
     "semantic_hash": ""
   },
   ".gapgpt/skills/scaffold-feature/SKILL.md": {
-    "mtime": 1795086029.803754,
-    "seen": 1795086240.110676,
+    "mtime": 1795158292.7334752,
+    "seen": 1795272028.312055,
     "ast_hash": "07ee573d7becf2fb97b1172c93ddca46",
     "semantic_hash": ""
   },
   ".gapgpt/skills/senior-review/SKILL.md": {
-    "mtime": 1795086029.5696862,
-    "seen": 1795086240.110677,
+    "mtime": 1795158292.7351127,
+    "seen": 1795272028.312056,
     "ast_hash": "26278dd93da51eb7b4266579eaaed738",
     "semantic_hash": ""
   },
   "docs/README.md": {
-    "mtime": 1795086165.2558672,
-    "seen": 1795086240.11068,
-    "ast_hash": "20177b7ade80a16b5297cf8aac9cd87a",
+    "mtime": 1795271962.1243083,
+    "seen": 1795272028.3120608,
+    "ast_hash": "bf0ed34ee102879a6e0105de0d978f22",
     "semantic_hash": ""
   },
   "docs/chat-agent.md": {
-    "mtime": 1795087517.287471,
-    "seen": 1795087523.627671,
+    "mtime": 1795158292.7431595,
+    "seen": 1795272028.312062,
     "ast_hash": "c5c825f473caf5d39d448cdd824f0ae7",
     "semantic_hash": ""
   },
   "docs/gapgpt-api.md": {
-    "mtime": 1795086148.9934387,
-    "seen": 1795086240.110682,
+    "mtime": 1795158292.7449095,
+    "seen": 1795272028.312063,
     "ast_hash": "c2ca69202a9e53bda13384863657eba5",
     "semantic_hash": ""
   },
   "docs/getting-started.md": {
-    "mtime": 1795087854.6223845,
-    "seen": 1795090100.2451499,
+    "mtime": 1795158292.7470558,
+    "seen": 1795272028.312064,
     "ast_hash": "17555f2bf18a8002921a388561369e2d",
     "semantic_hash": ""
   },
   "docs/instructions-import.md": {
-    "mtime": 1795086165.256415,
-    "seen": 1795086240.110683,
+    "mtime": 1795158292.7486243,
+    "seen": 1795272028.3120651,
     "ast_hash": "552db0e1f085bf94a4dad64ddbfdc0fd",
     "semantic_hash": ""
   },
   ".gapgpt/rules/project-memory-2.md": {
-    "mtime": 1794838959.5657704,
-    "seen": 1795090100.245139,
+    "mtime": 1795158292.725466,
+    "seen": 1795272028.312052,
     "ast_hash": "67d88e9d0760c3ba54c75dfd9551c1c5",
     "semantic_hash": ""
   },
   "screen.png": {
-    "mtime": 1795088963.2419481,
-    "seen": 1795090100.245153,
+    "mtime": 1795158292.8971066,
+    "seen": 1795272028.3120692,
     "ast_hash": "02df118cb99ff6e9d43a3a347272325e",
     "semantic_hash": ""
   },
   "screen_2.png": {
-    "mtime": 1795089261.9770346,
-    "seen": 1795090100.2451541,
+    "mtime": 1795158292.9138439,
+    "seen": 1795272028.3120692,
     "ast_hash": "83dcf4148ef8ef5ca99a2b6665d86a9f",
+    "semantic_hash": ""
+  },
+  "README.en.md": {
+    "mtime": 1795158314.1788516,
+    "seen": 1795272028.312059,
+    "ast_hash": "f868a9fdeadba14d5868e477c8b96a4b",
+    "semantic_hash": ""
+  },
+  "docs/user-message-actions.md": {
+    "mtime": 1795271962.1014493,
+    "seen": 1795272028.312066,
+    "ast_hash": "90610f9afab2cbbe3d637a8cf48cd9c1",
     "semantic_hash": ""
   }
 }
